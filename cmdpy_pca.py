@@ -21,17 +21,18 @@ def read_params(args):
     arg('-a','--algorithm',default='mds',type=str,choices=['mds','pca','nmds'])
     arg('-z','--feature_identifier',default='s__',type=str,choices=['k__','s__','PWY','UniRef90'])
     arg('-si','--sample_id',default='sampleID',type=str)
+    arg('-np','--num_plot',default=1,type=int)
     return vars(p.parse_args())
      
 def load_input(stdin): 
     return pd.read_csv(stdin, sep='\t', header=None, index_col=0)
 
 def edit_(f, sid, fi, np):
-    feats = [i for i in f.index.tolist() if i fi.split(':')]
+    feats = [i for i in f.index.tolist() if i in fi.split(':')]
     for n in range(np):
         nn = str(n+1)
         print f.loc[[sid,'color'+nn,'shape'+nn]+feats]
 
 if __name__ == '__main__':
     par = read_params(sys.argv)
-    edit_(load_input[par['stdin'], 'sampleID', par['feature_identifier'], par['num_plot']])
+    edit_(load_input[par['stdin'], par['sample_id'], par['feature_identifier'], par['num_plot']])

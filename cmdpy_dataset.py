@@ -227,7 +227,8 @@ class metadataset:
             n = str(i+1)
             if selection[n]:
                 tab = datasets(self.args['base_path'],self.args['dataset_input'][i],selection[n],'calling function dataset number '+str(n), False)
-                if self.args['columns'][i]: tab[self.args['columns'][i][0]] = self.args['columns'][i][1]
+                if self.args['columns'][i]: 
+                    for cta in self.args['columns'][i]: tab[cta[0]] = cta[1]
             for sample in tab.sampleID.tolist(): self.handle_profile(sample,self.args['dataset_input'][i])
             if len(f) == 0: f = tab
             else:  f = f.append(tab) if (not tab is None) else f
