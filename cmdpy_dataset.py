@@ -154,22 +154,21 @@ class metadataset:
            pp['metaphlan'] = True
         pp['proportions'] = list(map(int, pp['proportions'].split(',')))
         if len(pp['proportions'])!=2: raise IOError('proportions must contain 2 numbers separated by a comma.')
-        num_sel, queries, cols_to_add, datasets = len(pp['datasets']), list(), list(), list()
+        num_sel, queries, cols_to_add, datasets = len(pp['datasets']), list(), [[] for j in range(len(pp['datasets']))], list()
         for i,data in enumerate(pp['datasets']): 
             col_added, dataset, params = False, data.split('.')[0], data.split('.')[1].split(',')
             tot_reqs, cols, catch = len(params), list(), list()
             for q in params:
                 if (not q.startswith('col:')): catch.append(q)
-                else: 
-                    cols_to_add.append( q[4:].split(':')  )  
-                    col_added = True
-            if not col_added: cols_to_add.append( [] )
-            queries.append( ','.join( catch )   )
-            datasets.append( dataset )
+                else: cols_to_add[i] += [q[4:].split(':')]  
+            #col_added = True
+            #if not col_added: cols_to_add.append([])
+            queries.append(','.join(catch))
+            datasets.append(dataset)
         pp['select'], pp['columns'], pp['dataset_input'] = queries, cols_to_add, datasets	
-        if ( all([ x.split(':')[1:] == ['control'] for x in queries ]) and (not pp['only_metadata'])):
-            print 'WARNING: <only_metadata> option is not specififed, even if all the queries are \'controls\'.'
-            print 'Ensure this dataset will not be mixed with other via the <randomize_controls> option,',
+        if (all([x.split(':')[1:]==['control'] for x in queries]) and (not pp['only_metadata'])):
+            if pp['output_file']: print 'WARNING: <only_metadata> option is not specififed, even if all the queries are \'controls\'.'
+            if pp['output_file']: print 'Ensure this dataset will not be mixed with other via the <randomize_controls> option,',
         if pp['transpose'] and pp['both']: pp['traspose'],pp['both'] = False,True
         return pp
 	
@@ -218,7 +217,8 @@ class metadataset:
             app = False
             for i in range(len(pf)):
                 if pf.index[i] == 'select': app, f = True, f[f[pf.iloc[i,0]].isin(pf.iloc[i,1:])]
-            if log: print 'i am the log: ', log + '.'
+            if self.args['output_file']:
+                if log: print 'i am the log: ', log + '.'
             return f if app else None
         #*******************************************************************
         selection = dict([(str(n+1),self.args['select'][n]) for n in range(len(self.args['select']))])
@@ -326,9 +326,9 @@ class metadataset:
             self.feat += pro.columns.tolist()
         """
         if bool(self.args['genefam']): 
-            print 'merging profiles...'
+            #print 'merging profiles...'
             self.merge_profiles(self.profile_genes, 'genes')
-            print 'merged finished...'
+            #print 'merged finished...'
             pro_ = profile_('merged_profiles_genes.csv')
             data = data.merge(pro_, left_on='sampleID', right_index=True, how='left')
             self.feat += pro_.columns.tolist()
@@ -395,8 +395,8 @@ class metadataset:
         data.drop(data.loc[:,self.feat].columns[data.loc[:,self.feat].max().astype(np.float64)==data.loc[:,self.feat]\
 	        .min().astype(np.float64)],axis=1,inplace=True)
 
-        if not self.args['output_file']: print 'Current dataset: %i features.' % len(self.feat)
-        if not self.args['output_file']: print 'Current dataset: %i samples.' % len(data.sampleID.tolist())
+        if self.args['output_file']: print 'Current dataset: %i features.' % len(self.feat)
+        if self.args['output_file']: print 'Current dataset: %i samples.' % len(data.sampleID.tolist())
 
         if bool(self.args['log_transform']): 
             data.loc[:,self.feat]=data.loc[:,self.feat].apply(lambda d: np.log(np.array(map(float,d), dtype=np.float64)+1.),axis=0)
