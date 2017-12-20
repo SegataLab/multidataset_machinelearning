@@ -28,7 +28,6 @@ def read_params(args):
     arg('-z','--feature_identifier',default='s__',type=str,choices=['k__','s__','PWY','UniRef90'])
     arg('-si','--sample_id',default='sampleID',type=str)
     arg('-nc','--num_classes',default=2,type=int)
-    #arg('-np','--num_plot',default=1,type=int)
     arg('-cn','--class_name',default='study_condition',type=str)
     return vars(p.parse_args())
 
@@ -63,7 +62,6 @@ def edited_(f, sid, fi, ci, nc):
     feats = [i for i in f.index.tolist() for fii in fi.split(':') if fii in i]
     return f.loc[[sid,ci]+['color'+str(n+1) for n in range(nc)]+['shape'+str(n+1) for n in range(nc)]] + feats, :]
     
-
 if __name__ == '__main__':
     par = read_params(sys.argv)
     e = edited_(load_input(par['stdin']), par['sample_id'], par['feature_identifier'], par['class_name'])
