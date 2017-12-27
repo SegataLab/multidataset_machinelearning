@@ -410,7 +410,7 @@ class metadataset:
     def send_output(self, data):
         if bool(self.args['dense_matrix']):
             is_negative_above_th = lambda feat_row : ((len(feat_row)-np.count_nonzero(feat_row))/float(len(feat_row)))
-            stats = open('gene_family_rarefaction/statistics.txt','w')
+            stats = open('gene_family_rarefactions/statistics.txt','w')
             for th in self.args['zero_threshold']:
                 dt = data.T
                 feats = [ft for ft in self.feat if not is_negative_above_th(dt.loc[ft].astype('float'))>th]
@@ -422,8 +422,9 @@ class metadataset:
 
         else:
             if not self.args['output_file']: 
-                print data
-
+                datat = data.T
+                for i in datat.index.tolist(): 
+                    print '\t'.join([i]+list(map(str, datat.loc[i])))
             else:
                 if self.args['transpose']:
                     data.to_csv(self.args['output_file'].split('.')[0]+'_Headers.csv',sep='\t',header=True,index=False)
@@ -437,5 +438,4 @@ class metadataset:
 
 if __name__=='__main__':
 	st = metadataset()
-	st.send_output(st.get_dataset())
-	
+	st.send_output(st.get_dataset())	
