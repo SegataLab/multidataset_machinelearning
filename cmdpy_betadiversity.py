@@ -146,7 +146,7 @@ class beta_diversity(object):
         for c in self.sample_in_class.keys():
             present = [s for s in self.sample_in_class[c] if s in set(self.sample_and_coordinates.index.tolist())]
             present_sample_frame = self.sample_and_coordinates.loc[present]
-            scatter = sns.regplot(x='x1', y='x2', data=present_sample_frame, ax=ax, scatter=True, fit_reg=False\
+            scatter = sns.regplot(x='x1', y='x2', data=present_sample_frame, ax=ax, scatter=True, fit_reg=False, ##scatter_kws={'s':]}\
 		, label=self.atts_of_sample[present[0]][0], marker=self.atts_of_sample[present[0]][2], color=self.atts_of_sample[present[0]][1])
         ax.legend(loc=self.args['legend_loc'])
         plt.savefig(self.args['stdout']+'.'+self.args['format'], dpi=300) 
