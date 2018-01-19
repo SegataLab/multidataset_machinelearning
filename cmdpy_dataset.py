@@ -74,8 +74,8 @@ class metadataset:
         add( '--metaphlan', action='store_true')		
         add( '--pwyrelab', action='store_true')
         add( '--genefam', action='store_true')
-        add( '--marka', action='store_true')
-        add( '--markp', action='store_true')
+        add( '--markab', action='store_true')
+        add( '--markpres', action='store_true')
         add( '--pwycov', action='store_true')
         add( '--pfam', action='store_true')
 
@@ -84,8 +84,8 @@ class metadataset:
         add( '--pwyrelab_folder', type=str, default='pathways')
         add( '--genefam_folder', type=str, default='gene_families')
         add( '--pwycoverage_folder', type=str, default='humann2_PWYcov')
-        add( '--marka_folder', type=str, default='marker_abundance')
-        add( '--markp_folder', type=str, default='marker_presence')
+        add( '--markab_folder', type=str, default='marker_abundance')
+        add( '--markpres_folder', type=str, default='marker_presence')
         add( '--pfam_folder', type=str, default='pfam_profiles')
 
         # - WORD AFTER '_' TO DESIGN THE PROFILE FILE
@@ -148,10 +148,8 @@ class metadataset:
           , help='Statistics on metadata -gs study_condition:sample_type:disease, or -gs random/randomization/rand/randrandrand/randanything')
 
         pp = vars(p.parse_args())
-        if ( not pp['metaphlan'] ) and ( not pp['pwyrelab'] ) and ( not pp['genefam']) and \
-           ( not pp['marka']) and ( not pp['markp']) and ( not pp['pwycov']) and ( not pp['only_metadata'] and (not pp['pfam']) ):
-           #print 'Automatic settings on taxa relative abundance.'
-           pp['metaphlan'] = True
+        if (not pp['metaphlan']) and (not pp['pwyrelab']) and (not pp['genefam']) and \
+           (not pp['markab']) and (not pp['markpres']) and (not pp['pwycov']) and (not pp['only_metadata'] and (not pp['pfam'])): pp['metaphlan'] = True
         pp['proportions'] = list(map(int, pp['proportions'].split(',')))
         if len(pp['proportions'])!=2: raise IOError('proportions must contain 2 numbers separated by a comma.')
         num_sel, queries, cols_to_add, datasets = len(pp['datasets']), list(), [[] for j in range(len(pp['datasets']))], list()
@@ -177,10 +175,10 @@ class metadataset:
             self.profile_species.add(self.args['base_path']+dataset_name+'/'+self.args['metaphlan_folder']+'/'+sample+'/'+sample+'_'+self.args['metaphlan_title']+'.txt')
         if self.args['pfam'] and (not sample in self.args['exclude_samples']):
             self.profile_pfam.add(self.args['base_path']+dataset_name+'/'+self.args['pfam_folder']+'/'+sample+'/'+sample+'_'+self.args['pfam_title']+'.txt')
-        if self.args['marka'] and (not sample in self.args['exclude_samples']):
-            self.profile_marka.add(self.args['base_path']+dataset_name+'/'+self.args['marka_folder']+'/'+sample+'/'+sample+'_profile'+'.txt')
-        if self.args['markp'] and (not sample in self.args['exclude_samples']):
-            self.profile_markp.add(self.args['base_path']+dataset_name+'/'+self.args['markp_folder']+'/'+sample+'/'+sample+'_profile'+'.txt')
+        if self.args['markab'] and (not sample in self.args['exclude_samples']):
+            self.profile_marka.add(self.args['base_path']+dataset_name+'/'+self.args['markab_folder']+'/'+sample+'/'+sample+'_profile'+'.txt')
+        if self.args['markpres'] and (not sample in self.args['exclude_samples']):
+            self.profile_markp.add(self.args['base_path']+dataset_name+'/'+self.args['markpres_folder']+'/'+sample+'/'+sample+'_profile'+'.txt')
         if self.args['pwycov'] and (not sample in self.args['exclude_samples']):
             self.profile_cov.add(self.args['base_path']+dataset_name+'/'+self.args['pwycoverage_folder']+'/'+sample+'/'+sample+'_'+self.args['cov_title']+'.txt')
         if self.args['pwyrelab'] and (not sample in self.args['exclude_samples']): 
@@ -295,15 +293,17 @@ class metadataset:
             data = data.merge( shrink_taxa(pro) if self.args['shrink'] else pro, left_on='sampleID', right_index=True, how='left')
             self.feat += pro.columns.tolist()
 
+        if bool(self.args['markab']):
+            self.merge_profiles(self.profile_marka, 'markab')
+            pro = profile_('merged_profiles_markab.csv')
+	    data = data.merge(profile_('merged_profiles_markab.csv'), left_on='sampleID', right_index=True, how='left')
+
+        if bool(self.args['markpres']):
+            self.merge_profiles(self.profile_markp, 'markpres')
+            pro = profile_('merged_profiles_markpres.csv')
+            data = data.merge( profile_('merged_profiles_markpres.csv'), left_on='sampleID', right_index=True, how='left')
+
         """
-        if bool(self.args['marka']):
-            self.merge_profiles(self.profile_marka, 'marka')
-            pro = profile_('merged_profiles_marka.csv')
-	    data = data.merge(profile_('merged_profiles_marka.csv'), left_on='sampleID', right_index=True, how='left')
-        if bool(self.args['markp']):
-            self.merge_profiles(self.profile_markp, 'markp')
-            pro = profile_('merged_profiles_markp.csv')
-            data = data.merge( profile_('merged_profiles_markp.csv'), left_on='sampleID', right_index=True, how='left')
         if bool(self.args['pwycov']):
             self.merge_profiles(self.profile_cov, 'cover')
             pro = profile_('merged_profiles_cover.csv') 
@@ -325,6 +325,7 @@ class metadataset:
             data = data.merge(pro, left_on='sampleID', right_index=True, how='left')
             self.feat += pro.columns.tolist()
         """
+
         if bool(self.args['genefam']): 
             #print 'merging profiles...'
             self.merge_profiles(self.profile_genes, 'genes')
@@ -340,7 +341,7 @@ class metadataset:
             if os.path.exists('merged_profiles_'+exte+'.csv'): os.remove('merged_profiles_'+exte+'.csv')
         if self.args['pwyrelab']: 
             self.feat = [(f+'-PWY' if ( (not 'PWY' in f) and (not self.args['taxon'] in f) and (not 'UniRef90' in f) & (not 'marka' in f) \
-                and (not 'markp' in f) and (not 'PWYC' in f) & (not 'PF' in f)) else f) for f in self.feat]	
+            and (not 'markp' in f) and (not 'PWYC' in f) & (not 'PF' in f)) else f) for f in self.feat]	
         data = data.reset_index(drop=True)
 
         if bool(self.args['wilcoxon']):
@@ -392,8 +393,7 @@ class metadataset:
                     for k in features.keys(): data.loc[:,k].apply(lambda a : a*features[k]*10 )##, axis=1)
                     feat = [k for k in features.keys()]
 
-        data.drop(data.loc[:,self.feat].columns[data.loc[:,self.feat].max().astype(np.float64)==data.loc[:,self.feat]\
-	        .min().astype(np.float64)],axis=1,inplace=True)
+        data.drop(data.loc[:,self.feat].columns[data.loc[:,self.feat].max().astype(np.float64)==data.loc[:,self.feat].min().astype(np.float64)],axis=1,inplace=True)
 
         if self.args['output_file']: print 'Current dataset: %i features.' % len(self.feat)
         if self.args['output_file']: print 'Current dataset: %i samples.' % len(data.sampleID.tolist())

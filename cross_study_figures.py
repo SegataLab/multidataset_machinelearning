@@ -7,11 +7,14 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import seaborn as sns; sns.set()
 import matplotlib.gridspec as gridspec
-#import matplotlib.patches as patches
 import itertools
 from matplotlib import rc
 import utils
 
+## meteaphlan plot: 
+## python run.py crc --define study_condition:CRC:control -ds ZellerG_2014 YuJ_2015 FengQ_2015 VogtmannE_2016 CM_rescignocrc CM_lilt HanniganGD_2017 -db metaphlan -do cross_figures -g0 nt:1000 -g1 nsl:5 -g2 c:entropy
+## gene-families plot:
+##
 
 class cross_figures(object):
     left, width = .25, .5
@@ -60,9 +63,9 @@ class cross_figures(object):
 
         for i,d in enumerate(self.datasets):
             scores.append(avg_scores[d][1]/float(len(self.datasets)-1))   
-            coors.append([len(self.datasets), int(i)])
+            coors.append([len(self.datasets), new_order.index(d)]) ## found bug
             scores.append(avg_scores[d][0]/float(sum([test_n[ds] for ds in self.datasets if ds != d])))
-            coors.append([int(i), len(self.datasets)])
+            coors.append([new_order.index(d), len(self.datasets)])
 
         mean, div = [], 0
         lodo_row = len(self.datasets) + 1 ## changed 2
@@ -103,50 +106,48 @@ class cross_figures(object):
 
 
     def plot(self, db, algo, grid0, grid1, grid2, start):
-        sns.set(font_scale=.5)
+        sns.set(font_scale=1.2)
         mask, cross_data, lodo_data, nf  = self.plotdata(db, algo, grid0, grid1, grid2, start)
-        fig = plt.figure(1)
-        gs = gridspec.GridSpec(len(self.datasets)*2+2,len(self.datasets)*2)
-        ax_lodo = plt.subplot(gs[-2:, 0:-1])
-        ax_cross = plt.subplot(gs[0:-2, 0:-1])
-        ax_cbar = plt.subplot(gs[:-1, -1])
+        fig = plt.figure(figsize=(10,12))
+        gs = gridspec.GridSpec(len(self.datasets)+1,len(self.datasets)+1)  ##  , width_ratios=[3, 1, 1], height_ratios=[3, 1])
+        ax_lodo = plt.subplot(gs[-1:, 0:-1])
+        ax_cross = plt.subplot(gs[0:-1, 0:-1])
+        ax_cbar = plt.subplot(gs[2:, -1])
 
         data = cross_data.append(lodo_data).values
         annot_o, annot_t = cross_data.apply(lambda a : ['%.2f' %aa for aa in a]).values, lodo_data.apply(lambda o : ['%.2f' %oo for oo in o]).values			### 'fontweight': 'bold'
-        hm_o = sns.heatmap(cross_data, ax=ax_cross, fmt='', cmap='hot', cbar=False, vmin=0.5, vmax=1., linecolor='black', linewidth=1., annot=annot_o, xticklabels=True, square=True, annot_kws={'fontsize': 9})
-        hm_t = sns.heatmap(lodo_data, ax=ax_lodo, fmt='', cmap='hot', cbar=False, vmin=0.5, vmax=1., linecolor='black', linewidth=1., annot=annot_t, xticklabels=True, annot_kws={'fontsize': 9}, square=True) 
+        hm_o = sns.heatmap(cross_data, ax=ax_cross, fmt='', cmap='hot', cbar=False, vmin=0.5, vmax=1., linecolor='black', annot=annot_o, xticklabels=True, square=True, annot_kws={'fontsize': 19}, linewidth=0.)
+        hm_t = sns.heatmap(lodo_data, ax=ax_lodo, fmt='', cmap='hot', cbar=False, vmin=0.5, vmax=1., linecolor='black', annot=annot_t, xticklabels=False, annot_kws={'fontsize': 19}, square=True, linewidth=0.) 
         norm_ = matplotlib.colors.Normalize(vmin=.5,vmax=1.)
         cbar = matplotlib.colorbar.ColorbarBase(ax_cbar, cmap='hot', norm=norm_, extend='min', filled=True, drawedges=True)
-
-        ###for d in dir(cbar.outline): print d #cbar.solids
-        #print cbar, type(cbar), cbar.edges()
-        cbar.outline.set_edgecolor('black')
-        cbar.outline.set_linewidth(1.2) #outline.set_linewidth(0.2)
-        cbar.dividers.set_color('black')
-        cbar.dividers.set_linewidth(.02)
+        #cbar.outline.set_edgecolor('black')
+        #cbar.outline.set_linewidth(5.)
+        #cbar.dividers.set_color('black')
+        #cbar.dividers.set_linewidth(.2)
         cbar.set_ticks(list(np.arange(0.5,1.0,0.1))+[1])
         cbar.set_ticklabels(list(map(str,np.arange(0.5,1.0,.1)))+[1.0])
-        ax_cbar.tick_params(labelsize=8)
-        ax_cbar.set_ylabel('AUC', size=9, fontweight='bold')
+
+        ax_cbar.tick_params(labelsize=16)
+        ax_cbar.set_ylabel('AUC', size=16, fontweight='bold')
         ax_cross.xaxis.set_ticks_position('top')
-       
         ax_cross.set_xticklabels(ax_cross.get_xticklabels(), fontweight='bold')
         ax_cross.set_yticklabels(ax_cross.get_yticklabels(), fontweight='bold')
-        ax_lodo.set_xticklabels(ax_lodo.get_xticklabels(), fontweight='bold')
+        #ax_lodo.set_xticklabels(ax_lodo.get_xticklabels(), fontweight='bold')
         ax_lodo.set_yticklabels(ax_lodo.get_yticklabels(), fontweight='bold')
+        ax_cbar.set_yticklabels(ax_cbar.get_yticklabels(), fontweight='bold')
+        #plt.setp(ax_lodo.get_xticklabels(), rotation=30, ha='right')
 
-        #pos1 = ax_cbar.get_position() # get the original position 
-        #pos2 = [pos1.x0*0.92, pos1.y0, pos1.width*0.7, pos1.height*0.95]
-        #ax_cbar.set_position(pos2)
+        plt.setp(ax_lodo.get_yticklabels(), rotation=30)
+        plt.setp(ax_cross.get_yticklabels(), rotation=30)
+        plt.setp(ax_cross.get_xticklabels(), rotation=38, ha='left')
 
-        plt.setp(ax_lodo.get_xticklabels(), rotation=45) ##, horizontalalignment='right')
-        plt.setp(ax_lodo.get_yticklabels(), rotation=0)
-        plt.setp(ax_cross.get_xticklabels(), rotation=45) ##, horizontalalignment='right')
-
-        plt.tight_layout()
-        pos1 = ax_cbar.get_position() # get the original position 
-        pos2 = [pos1.x0*0.82, pos1.y0, pos1.width*0.7, pos1.height*0.95]
-        ax_cbar.set_position(pos2)
+        plt.subplots_adjust(left=0.24) ## 0.18        
+        pos1 = ax_lodo.get_position() # get the original position 
+        pos2 = [pos1.x0, pos1.y0+0.1, pos1.width, pos1.height]
+        ax_lodo.set_position(pos2)
+        posc1 = ax_cbar.get_position() 
+        posc2 = [posc1.x0+0.01, posc1.y0+0.15, posc1.width*0.6, posc1.height-0.1]
+        ax_cbar.set_position(posc2) ##, which='original')
         plt.savefig('%s/MachineLearning_%s_%s_%s_features.png' %(self.save_folder, self.title, db, str(nf if nf<400 else 'all')), dpi=600)
         
 

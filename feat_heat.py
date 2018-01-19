@@ -10,14 +10,17 @@ import os
 import subprocess as sp
 import pandas as pd
 import numpy as np
+import matplotlib.gridspec as gridspec
 from scipy.stats import rankdata
+
+## python run.py crc --define study_condition:CRC:control --datasets FengQ_2015 ZellerG_2014 CM_rescignocrc YuJ_2015 CM_lilt VogtmannE_2016 HanniganGD_2017 -al rf -do heat_map -db metaphlan -g0 nt:1000 -g1 nsl:5 -g2 c:entropy -cm RdYlBu_r
 
 class feature_heatmap(object):
     dataselect = '/python ../../cmdpy/datasetSelection2.py'
     save_fig = '../Images'
     getfeatnumber = {10:13, 20:24, 30:35, 40:46, 50:57, 60:68} 
 
-    def __init__(self, datasets, db, defined_problem, algo, grid0, grid1, grid2, which_python, n_imp_feat, lodo, char_size_hm, path='/CM/data/meta/'):
+    def __init__(self, datasets, db, defined_problem, algo, grid0, grid1, grid2, which_python, n_imp_feat, lodo, char_size_hm, cmap, path='/CM/data/meta/'):
         self.n_imp_feat = n_imp_feat		# num of feature to look at for each
         self.char_size_hm = char_size_hm	# char size on the heatmap
         self.lodo = lodo			# a boolean
@@ -31,6 +34,7 @@ class feature_heatmap(object):
         self.grid0 = grid0
         self.grid1 = grid1
         self.grid2 = grid2
+        self.cmap = cmap
         self.segregate_features = True   	# no idea
         self.problem = defined_problem.split(':')
         self.tests = [':'.join(self.problem), ':'.join([self.problem[0],self.problem[1]]),':'.join([self.problem[0],self.problem[2]])]
@@ -54,22 +58,40 @@ class feature_heatmap(object):
 
 
     def heatmap_simple(self):
-        fig,ax = plt.subplots(figsize=(10,10))#, gridspec_kw=grid_kws)
-        ##self.data = self.data.loc[self.select_nlargest()]
-
-        xticks = [(nm if not nm in self.utils.data_aliases else self.utils.data_aliases[nm]) for nm in self.data.columns.tolist()]
+        fig, (ax_hmap, ax_cbar) = plt.subplots(1,2, figsize=(8,12), gridspec_kw={'width_ratios':[8,1]})
         vmin_, vmax_ = np.min(self.data.values), np.max(self.data.values)
-        #ccmap = sns.diverging_palette(0,255, sep=77, as_cmap=True, center='dark')
-        hm = sns.heatmap(self.data, ax=ax, cmap='rainbow', cbar=True, vmin=vmin_, vmax=vmax_, xticklabels=xticks, linewidths=.2, linecolor='white', center=0.0)
-        hm.set_xticklabels(hm.get_xticklabels(), fontsize=10) # rotation=45, rotation_mode='anchor')  
+        norm_ = matplotlib.colors.Normalize(vmin=vmin_, vmax=vmax_)
+        cbar = matplotlib.colorbar.ColorbarBase(ax_cbar, cmap=self.cmap, norm=norm_, extend='both', filled=True, drawedges=True)
+        #cbar.outline.set_edgecolor('black')
+        #cbar.outline.set_linewidth(3.) 
+        #cbar.dividers.set_color('black')
+        #cbar.dividers.set_linewidth(.12)
+        xticks = [(nm if not nm in self.utils.data_aliases else self.utils.data_aliases[nm]) for nm in self.data.columns.tolist()]
+        yticks = [s.replace('_',' ') for s in self.data.index.tolist()] #[s.replace('_',' ') for s in [('$\it{%s}$' %s_) for s_ in self.data.index.tolist()]]
+        hm = sns.heatmap(self.data, ax=ax_hmap, cmap=self.cmap, cbar=False, vmin=vmin_, vmax=vmax_, xticklabels=xticks, yticklabels=yticks, linewidths=.0, linecolor='black', center=0.0)
+        for label in ax_hmap.get_yticklabels(): 
+            label.set_weight('bold')
+            label.set_style('italic') 
+        for num in ax_cbar.get_yticklabels(): num.set_weight('bold')
 
-        #cbar = ax.figure.colorbar(ax.collections[0])
-        #cbar.set_ticks([vmin_, 0.0, vmax_])
-        #cbar.set_ticklabels(['%s-leaning' %self.tests[0].split(':')[2], 'non-detected', '%s-leaning' %self.tests[0].split(':')[1]])
+        ax_cbar.set_ylabel('Feature Importance Rank', size=16, fontweight='bold')
+        hm.set_xticklabels(hm.get_xticklabels(), fontsize=9, fontweight='bold')
+        r_ticks = np.arange(vmin_,vmax_,5)
+        if r_ticks[-1] != vmax_: r_ticks = list(r_ticks) + [vmax_]
+        cbar.outline.set_clip_on(r_ticks)
+        cbar.set_ticks(r_ticks)
+        cbar.set_ticklabels([str(int(t)) for t in r_ticks]) ##, fontweight='bold')
+        ax_cbar.tick_params(labelsize='large')
+        ax_hmap.xaxis.set_ticks_position('top')
+        plt.setp(ax_hmap.get_xticklabels(), rotation=60, ha='left') 
+        plt.subplots_adjust(top=1., left=0.16)  ##, bottom=0.3)
+        plt.tight_layout()
+        
+        pos1 = ax_cbar.get_position()
+        pos2 = [pos1.x0*0.95, pos1.y0, pos1.width*1.5, pos1.height]
+        ax_cbar.set_position(pos2)
 
-        plt.subplots_adjust(left=0.525, bottom=0.3)
-        fig.autofmt_xdate(rotation=45, ha='right')
-        plt.suptitle('Feature Importance Ranking')
+        #plt.suptitle('Feature Importance Ranking')
         plt.savefig('%s/FeatureHeatmap.png' %(self.save_fig), dpi=600) 
 
 
@@ -127,28 +149,40 @@ class feature_heatmap(object):
         f = self.frames
         for ds in f.columns.tolist(): self.most_relevant_features += f.nlargest(self.n_imp_feat, ds).index.tolist()
         self.most_relevant_features = list(set(self.most_relevant_features))
-
-        for ds in f.columns.tolist(): f.loc[:, ds] = rankdata(np.array(f.loc[:, ds].tolist(), dtype=np.float64))
-
-        f = f.apply(lambda row : row*self.signs_[row.name], axis=1)
-        f = f.apply(lambda r : [(0.0 if (x==0.0) else x) for x in r], axis=0) 
-
         f = f.loc[self.most_relevant_features]
-        sort_on_sum = lambda dataframe, feat: sum(dataframe.loc[feat, :]) 
-
-        negatives = [el[0] for el in sorted([(ft, np.sum(f.loc[ft, :].tolist())) for ft in f.index.tolist() if self.signs_[ft]<0], key=lambda el : el[1], reverse=True)]
-        positives = [el[0] for el in sorted([(ft, np.sum(f.loc[ft, :].tolist())) for ft in f.index.tolist() if self.signs_[ft]>0], key=lambda el : el[1], reverse=True)]
-        
+        control_leaning = [ft for ft in f.index.tolist() if self.signs_[ft]<0.]
+        cancer_leaning = [ft for ft in f.index.tolist() if self.signs_[ft]>0.]
         for ds in self.datasets:
-            f.loc[negatives, ds] = -1*(rankdata(-1*np.array(f.loc[negatives, ds].tolist(), dtype=np.float64)))
-            f.loc[positives, ds] = rankdata(np.array(f.loc[positives, ds].tolist(), dtype=np.float64))
-
-        f = f.loc[self.most_relevant_features]
-        sorted_indices = [ft for ft in f.index.tolist() if np.sum(f.loc[ft, :])>0.] + [ft for ft in f.index.tolist() if np.sum(f.loc[ft, :])<0.] 
-        f = f.loc[sorted_indices, :]
-
-        if self.db == 'metaphlan': f.set_index([[i[3:] for i in f.index.tolist()]], inplace=True)
+            f.loc[control_leaning, ds] = rankdata(f.loc[control_leaning, ds])
+            f.loc[cancer_leaning, ds] = rankdata(f.loc[cancer_leaning, ds])
+        f = f.apply(lambda row : row*self.signs_[row.name], axis=1)
+        f = f.apply(lambda r : [(0.0 if (x==0.0) else x) for x in r], axis=0)
+        neg = [el[0] for el in sorted([(ft, np.sum(f.loc[ft, :].tolist())) for ft in f.index.tolist() if self.signs_[ft]<0.], key=lambda el : el[1], reverse=True)]
+        pos = [el[0] for el in sorted([(ft, np.sum(f.loc[ft, :].tolist())) for ft in f.index.tolist() if self.signs_[ft]>0.], key=lambda el : el[1], reverse=True)]
+        f = f.loc[pos + neg]
+        rename_spp = lambda s_ : s_.replace('unclassified','spp.') if s_.endswith('unclassified') else s_ 
+        if self.db == 'metaphlan': f.set_index([[rename_spp(i[3:]) for i in f.index.tolist()]], inplace=True)
         return f
+
+
+        #for ds in f.columns.tolist(): f.loc[:, ds] = rankdata(np.array(f.loc[:, ds].tolist(), dtype=np.float64))
+        #f = f.apply(lambda row : row*self.signs_[row.name], axis=1)
+        #f = f.apply(lambda r : [(0.0 if (x==0.0) else x) for x in r], axis=0) 
+        #f = f.loc[self.most_relevant_features]
+        #negatives_ = [el[0] for el in sorted([(ft, np.sum(f.loc[ft, :].tolist())) for ft in f.index.tolist() if self.signs_[ft]<0.], key=lambda el : el[1], reverse=True)]
+        #positives_ = [el[0] for el in sorted([(ft, np.sum(f.loc[ft, :].tolist())) for ft in f.index.tolist() if self.signs_[ft]>0.], key=lambda el : el[1], reverse=True)]
+        #negatives = [ft for ft in f.index.tolist() if self.signs_[ft]<0.]
+        #positives = [ft for ft in f.index.tolist() if self.signs_[ft]>0.]
+        #bubbole= [(ft, np.sum(f.loc[ft, :].tolist())) for ft in f.index.tolist() if self.signs_[ft]>0.]
+        #for ro in bubbole: print ro
+        #for ds in self.datasets:
+        #    f.loc[negatives, ds] = -1*(rankdata(-1*np.array(f.loc[negatives, ds].tolist(), dtype=np.float64)))
+        #    #f.loc[negatives] = f.loc[negatives_]
+        #    f.loc[positives, ds] = rankdata(np.array(f.loc[positives, ds].tolist(), dtype=np.float64))
+        #    #f.loc[positives] = f.loc[positives_]
+        #f = f.loc[self.most_relevant_features]
+        #sorted_indices = [ft for ft in f.index.tolist() if np.sum(f.loc[ft, :])>0.] + [ft for ft in f.index.tolist() if np.sum(f.loc[ft, :])<0.] 
+        #f = f.loc[sorted_indices, :]
 
 
     def concat_frames(self, lodo):
