@@ -45,8 +45,8 @@ class metadataset:
             ,'DNA_extraction_kit'\
             ,'PMID']
         self.profile_species = set()
-        self.profile_marka = set()
-        self.profile_markp = set()
+        self.profile_markab = set()
+        self.profile_markpres = set()
         self.profile_cov = set()
         self.profile_pwys = set()
         self.profile_genes = set()
@@ -65,10 +65,13 @@ class metadataset:
 	# - FOR SPECIFY DIFFERENT PATHS		
         add( '--base_path', type=str, default='/CM/data/meta/')
         add( '--metadata_name', type=str, default=None)
-        #add( '--metaphlan_path', type=str, default='')
+
+        add( '--metaphlan_path', type=str, default='/CM/data/meta/')
         #add( '--pwyrelab_path', type=str, default='')
         #add( '--genefam_path', type=str, default='')
         #add( '--marker_path', type=str, default='')
+
+        add('--change_profile_func', action='store_true') ##handle_profile)
 
         # - ACTIVATE TYPES OF PROFILES
         add( '--metaphlan', action='store_true')		
@@ -80,20 +83,20 @@ class metadataset:
         add( '--pfam', action='store_true')
 
         # - NAMES FOR THE PROFILES FOLDERS
-        add( '--metaphlan_folder', type=str, default='metaphlan2')
-        add( '--pwyrelab_folder', type=str, default='pathways')
-        add( '--genefam_folder', type=str, default='gene_families')
-        add( '--pwycoverage_folder', type=str, default='humann2_PWYcov')
-        add( '--markab_folder', type=str, default='marker_abundance')
-        add( '--markpres_folder', type=str, default='marker_presence')
-        add( '--pfam_folder', type=str, default='pfam_profiles')
+        add( '--metaphlan_folder', type=str, default='metaphlan2/')
+        add( '--pwyrelab_folder', type=str, default='pathways/')
+        add( '--genefam_folder', type=str, default='gene_families/')
+        add( '--pwycoverage_folder', type=str, default='humann2_PWYcov/')
+        add( '--markab_folder', type=str, default='marker_abundance/')
+        add( '--markpres_folder', type=str, default='marker_presence/')
+        add( '--pfam_folder', type=str, default='pfam_profiles/')
 
         # - WORD AFTER '_' TO DESIGN THE PROFILE FILE
-        add( '--metaphlan_title', type=str, default='profile')
-        add( '--pwy_title', type=str, default='profile', choices=['profile','complete_profile'])
-        add( '--cov_title', type=str, default='profile', choices=['profile','complete_profile'])
-        add( '--genefam_title', type=str, default='profile', choices=['profile','complete_profile'])
-        add( '--pfam_title', type=str, default='profile')
+        add( '--metaphlan_title', type=str, default='_profile')
+        add( '--pwy_title', type=str, default='_profile', choices=['_profile','_complete_profile'])
+        add( '--cov_title', type=str, default='_profile', choices=['_profile','_complete_profile'])
+        add( '--genefam_title', type=str, default='_profile', choices=['_profile','_complete_profile'])
+        add( '--pfam_title', type=str, default='_profile')
 
         # - SAMPLE A RANDOMIZE POPULATION FOMRM A BIGGER DATA LIST
         add( '-rc', '--randomize_controls', action='store_true')
@@ -106,23 +109,27 @@ class metadataset:
           , help='the names to the train and test of the randomized controls;must be two but can be equal: the first is the training.')
         add( '-cw', '--control_word', type=str, default=None, help='add a common field to all the externally derived controls\
              , the added field will be in third position (after dataset_name sampleID) under header "ext_characterization"')
+        
+        add( '-sc', '--select_columns', type=str, default=[], nargs='+')
         # - FURTHER METAPHLAN SPECIFICS
         add( '-mx', '--mixed_taxa', action='store_true')
+        add( '-ys', '--yes_strain', action='store_true')
         add( '-tx', '--taxon', type=str, choices=['k__','p__','c__','o__','f__','g__','s__'], default='s__')
         add( '-sr', '--shrink', action='store_true')
         # - only metadata is for prepare the bigger group to
         # - randomize after. 	
         add( '-x', '--exclude_samples', nargs='+', type=str, default=[]) ## options to avoid as much as possible 
         add( '-om', '--only_metadata', action='store_true', help='This option is for gen control to ramdomize after.')
-        add( '-mgp', '--merge_profile_exec', default='/scratchCM/users/paolo.manghi/cmdpy/merge_metaphlan_tables02.py')
+        add( '-mgp', '--merge_profile_exec', default='/scratchCM/users/paolo.manghi/multidataset_machinelearning/merge_metaphlan_tables02.py')
 
+
+        add('--top_features', default=None, type=int)
         # - TRANSFORMATIONS
         add( '-pn', '--percentile_normalization', type=str, default=None\
             ,help='percentile normalization: eg -pn study_condtion:control:CRC whatever is in the 1st field is the column to look at. Whats is int eh 2nd \
                   is the reference percentiles distribution (should be some kind of control) whatever is in the last field will be uniformed to the reference: \
                   make usage of add_column option of this script to help yourself.')
         add( '-lg', '--log_transform', action='store_true', help='performs (log(1+anyfeature))')	
-
         add( '-dm', '--dense_matrix', action='store_true'\
             , help='cut out features being zeros in <zero_threshold> percentage of the samples [ default = 10 per ]')
         add( '-zt', '--zero_threshold', nargs='+', default=[0.1], type=float)
@@ -147,6 +154,9 @@ class metadataset:
         add( '-gs', '--give_statistics', type=str, default=None\
           , help='Statistics on metadata -gs study_condition:sample_type:disease, or -gs random/randomization/rand/randrandrand/randanything')
 
+        add( '-fo', '--feat_only', action='store_true')
+
+
         pp = vars(p.parse_args())
         if (not pp['metaphlan']) and (not pp['pwyrelab']) and (not pp['genefam']) and \
            (not pp['markab']) and (not pp['markpres']) and (not pp['pwycov']) and (not pp['only_metadata'] and (not pp['pfam'])): pp['metaphlan'] = True
@@ -163,6 +173,9 @@ class metadataset:
             #if not col_added: cols_to_add.append([])
             queries.append(','.join(catch))
             datasets.append(dataset)
+
+        print queries, ' questa e la richiesta a livello di parametro.'
+
         pp['select'], pp['columns'], pp['dataset_input'] = queries, cols_to_add, datasets	
         if (all([x.split(':')[1:]==['control'] for x in queries]) and (not pp['only_metadata'])):
             if pp['output_file']: print 'WARNING: <only_metadata> option is not specififed, even if all the queries are \'controls\'.'
@@ -172,29 +185,36 @@ class metadataset:
 	
     def handle_profile(self, sample, dataset_name):
         if self.args['metaphlan'] and (not sample in self.args['exclude_samples']): 
-            self.profile_species.add(self.args['base_path']+dataset_name+'/'+self.args['metaphlan_folder']+'/'+sample+'/'+sample+'_'+self.args['metaphlan_title']+'.txt')
+            self.profile_species.add(self.args['base_path']+dataset_name+'/'+self.args['metaphlan_folder']+sample+'/'+sample+self.args['metaphlan_title']+'.tsv')
         if self.args['pfam'] and (not sample in self.args['exclude_samples']):
-            self.profile_pfam.add(self.args['base_path']+dataset_name+'/'+self.args['pfam_folder']+'/'+sample+'/'+sample+'_'+self.args['pfam_title']+'.txt')
+            self.profile_pfam.add(self.args['base_path']+dataset_name+'/'+self.args['pfam_folder']+sample+'/'+sample+self.args['pfam_title']+'.txt')
         if self.args['markab'] and (not sample in self.args['exclude_samples']):
-            self.profile_marka.add(self.args['base_path']+dataset_name+'/'+self.args['markab_folder']+'/'+sample+'/'+sample+'_profile'+'.txt')
+            self.profile_markab.add(self.args['base_path']+dataset_name+'/'+self.args['markab_folder']+sample+'/'+sample+'_profile'+'.txt')
         if self.args['markpres'] and (not sample in self.args['exclude_samples']):
-            self.profile_markp.add(self.args['base_path']+dataset_name+'/'+self.args['markpres_folder']+'/'+sample+'/'+sample+'_profile'+'.txt')
+            self.profile_markpres.add(self.args['base_path']+dataset_name+'/'+self.args['markpres_folder']+sample+'/'+sample+'_profile'+'.txt')
         if self.args['pwycov'] and (not sample in self.args['exclude_samples']):
-            self.profile_cov.add(self.args['base_path']+dataset_name+'/'+self.args['pwycoverage_folder']+'/'+sample+'/'+sample+'_'+self.args['cov_title']+'.txt')
+            self.profile_cov.add(self.args['base_path']+dataset_name+'/'+self.args['pwycoverage_folder']+sample+'/'+sample+self.args['cov_title']+'.txt')
         if self.args['pwyrelab'] and (not sample in self.args['exclude_samples']): 
-            self.profile_pwys.add(self.args['base_path']+dataset_name+'/'+self.args['pwyrelab_folder']+'/'+sample+'/'+sample+'_'+self.args['pwy_title']+'.txt')
+            self.profile_pwys.add(self.args['base_path']+dataset_name+'/'+self.args['pwyrelab_folder']+sample+'/'+sample+self.args['pwy_title']+'.txt')
         if self.args['genefam'] and (not sample in self.args['exclude_samples']): 
-            self.profile_genes.add(self.args['base_path']+dataset_name+'/'+self.args['genefam_folder']+'/'+ sample+'/'+ sample+'_'+self.args['genefam_title']+'.txt')
- 
+            self.profile_genes.add(self.args['base_path']+dataset_name+'/'+self.args['genefam_folder']+ sample+'/'+ sample+self.args['genefam_title']+'.txt')
+
+    def handle_profile_direct_folder(self, sample, dataset_name):
+        if self.args['metaphlan'] and (not sample in self.args['exclude_samples']):
+            print 'profile for sample %s will be searched in ', self.args['metaphlan_path'] + dataset_name + '/' + self.args['metaphlan_folder'] + sample + self.args['metaphlan_title'] + '.tsv'
+            self.profile_species.add(self.args['metaphlan_path'] + dataset_name + '/' + self.args['metaphlan_folder'] + sample + self.args['metaphlan_title'] + '.tsv')
+
     def create_dataset(self):
         #*********************************************
         def datasets(path,data_name,selection_criteria,log,random_control=False):
             pf = pd.DataFrame()
+
             if not random_control:
-                f = pd.read_table(path+data_name+'/'+data_name+'_metadata.txt'\
+                f = pd.read_table(path+data_name+'/'+data_name+'_metadata.tsv'\
                 if not self.args['metadata_name']\
                 else self.args['metadata_name'],sep='\t',header=0, index_col=False)
                 f.insert(0,'dataset_name',data_name)
+                print data_name, ' questo e f appena inserito i nome del dataset'
             else:
                 total_controls_added = int(selection_criteria.split(':')[0][6:])
                 bigger_class = (total_controls_added//(self.args['proportions'][1]+1))*self.args['proportions'][1]
@@ -210,11 +230,15 @@ class metadataset:
                 if bool(self.args['control_word']):
                     f.insert(2,'ext_characterization',self.args['control_word'])
                 selection_criteria = ':'.join(selection_criteria.split(':')[1:])					
-            if selection_criteria:
+            if ((selection_criteria) and (selection_criteria != 'all')):      
+            #   if selection_criteria:
                 pf = pf.append(pd.DataFrame([s.split(':') for s in selection_criteria.split(',')], index=['select']*(selection_criteria.count(',')+1)))
             app = False
-            for i in range(len(pf)):
-                if pf.index[i] == 'select': app, f = True, f[f[pf.iloc[i,0]].isin(pf.iloc[i,1:])]
+            if selection_criteria == 'all': 
+                app = True 
+            else:
+                for i in range(len(pf)):
+                    if pf.index[i] == 'select': app, f = True, f[f[pf.iloc[i,0]].isin(pf.iloc[i,1:])]
             if self.args['output_file']:
                 if log: print 'i am the log: ', log + '.'
             return f if app else None
@@ -227,7 +251,13 @@ class metadataset:
                 tab = datasets(self.args['base_path'],self.args['dataset_input'][i],selection[n],'calling function dataset number '+str(n), False)
                 if self.args['columns'][i]: 
                     for cta in self.args['columns'][i]: tab[cta[0]] = cta[1]
-            for sample in tab.sampleID.tolist(): self.handle_profile(sample,self.args['dataset_input'][i])
+
+            print selection[n], ' questa e prima di andare in errore'
+            for sample in tab.sampleID.tolist(): 
+                if self.args['change_profile_func']:
+                    self.handle_profile_direct_folder(sample, self.args['dataset_input'][i])
+                else:
+                    self.handle_profile(sample, self.args['dataset_input'][i])
             if len(f) == 0: f = tab
             else:  f = f.append(tab) if (not tab is None) else f
         if self.args['randomize_controls']:  
@@ -240,11 +270,14 @@ class metadataset:
             else:
                 f = f.append(datasets(self.args['base_path'],self.args['control_filename'],'select'+str(act_samples*int(self.args['proportions'][0]))+\
                 (':study_condition:control' if not self.args['control_conditions'] else self.args['control_conditions']),'calling function for controls',True))
+
         f = f.reset_index(drop=True)
+
         meta = [s for s in f.columns]
         meta1 = [s for s in self.imp_fields if s in meta]
         meta2 = [s for s in meta if s not in self.imp_fields]
-        f = f[meta1+meta2].fillna('na')
+
+        f = f[meta1+meta2].fillna('NA')
         self.metadata = meta1+meta2
         return f
 
@@ -262,12 +295,16 @@ class metadataset:
             if self.args['output_file']: 
                 with open(self.args['output_file']+'.stats','w') as of: of.write(stats)
             else: print stats 	
+
         #***********************#
+
         def shrink_taxa(frame):
             columns_n = [(c.split('|')[-1]) for c in frame.columns.tolist()]
             frame.columns = columns_n
             return frame
+
         #***********************#
+
         def profile_(fname): 
             df = pd.read_csv(fname, header=0, sep='\t', low_memory=False if not self.args['genefam'] else True)
             df = df[1:]
@@ -275,33 +312,58 @@ class metadataset:
             df = df.T
             df.columns = df.iloc[0,:]
             df = df.iloc[1:,:]
+            
+            print df.index.tolist(), ' before'
+
+            if self.args['change_profile_func']: 
+                df.index = [i+'_profile' for i in df.index.tolist()]
+
+            print df.index.tolist(), ' after'
+
             df.index = [prev.split('_'+'complete' if 'complete' in prev else '_prof')[0] for prev in df.index.tolist()]
             return df
+
         #***********************#
+
         self.feat = []
-        if bool(self.args['only_metadata']): data = self.create_dataset()
+
+        if bool(self.args['only_metadata']): 
+            data = self.create_dataset()
+
         else:
             data = self.create_dataset()
             pro = pd.DataFrame()
 
         if bool(self.args['metaphlan']):
-            if (self.args['metaphlan'] and (self.args['pwyrelab'] or self.args['genefam'] or self.args['marka'] or self.args['markp'] or self.args['pwycov']\
-	        )) and (not self.args['shrink']): self.args['shrink'] = True
+            if (self.args['metaphlan'] and (self.args['pwyrelab'] or self.args['genefam'] or self.args['markab'] or self.args['markpres'] or self.args['pwycov']\
+	        )) and (not self.args['shrink']): 
+                self.args['shrink'] = True
             self.merge_profiles(self.profile_species, 'species')
             pro = profile_('merged_profiles_species.csv')
-            pro = pro[[t for t in pro.columns.tolist() if (self.args['taxon'] in t and (not 't__' in t))]] 
+          
+
+
+            if not self.args['yes_strain']: pro = pro[[t for t in pro.columns.tolist() if (self.args['taxon'] in t and (not 't__' in t))]] 
+            else: pro = pro[[t for t in pro.columns.tolist() if (self.args['taxon'] in t)]]
+
             data = data.merge( shrink_taxa(pro) if self.args['shrink'] else pro, left_on='sampleID', right_index=True, how='left')
             self.feat += pro.columns.tolist()
+								
+        #lorelei = data[data['sampleID']=='H5']
+        #print lorelei['k__Viruses|p__Viruses_noname|c__Viruses_noname|o__Caudovirales|f__Myoviridae|g__Myoviridae_noname|s__Escherichia_phage_2_JES_2013']
+        #exit(1)
+	#k__Viruses|p__Viruses_noname|c__Viruses_noname|o__Caudovirales|f__Myoviridae|g__Myoviridae_noname|s__Escherichia_phage_2_JES_2013
 
         if bool(self.args['markab']):
-            self.merge_profiles(self.profile_marka, 'markab')
+            self.merge_profiles(self.profile_markab, 'markab')
             pro = profile_('merged_profiles_markab.csv')
-	    data = data.merge(profile_('merged_profiles_markab.csv'), left_on='sampleID', right_index=True, how='left')
+	    data = data.merge(pro, left_on='sampleID', right_index=True, how='left')
 
         if bool(self.args['markpres']):
-            self.merge_profiles(self.profile_markp, 'markpres')
+            self.merge_profiles(self.profile_markpres, 'markpres')
             pro = profile_('merged_profiles_markpres.csv')
-            data = data.merge( profile_('merged_profiles_markpres.csv'), left_on='sampleID', right_index=True, how='left')
+            data = data.merge(pro, left_on='sampleID', right_index=True, how='left')
+            self.feat += pro.columns.tolist()
 
         """
         if bool(self.args['pwycov']):
@@ -327,9 +389,7 @@ class metadataset:
         """
 
         if bool(self.args['genefam']): 
-            #print 'merging profiles...'
             self.merge_profiles(self.profile_genes, 'genes')
-            #print 'merged finished...'
             pro_ = profile_('merged_profiles_genes.csv')
             data = data.merge(pro_, left_on='sampleID', right_index=True, how='left')
             self.feat += pro_.columns.tolist()
@@ -337,12 +397,30 @@ class metadataset:
         if self.args['give_statistics'] and (not self.args['give_statistics'].startswith('rand')): statistics(data, self.args['give_statistics'].split(':') )
         if self.args['output_file'] and (os.path.exists(self.args['output_file'])): 
             os.remove(self.args['output_file'])
-        for exte in ['species','pwys','marka','markp','cover','pfam']:
+
+        for exte in ['species','pwys','markab','markpres','cover','pfam']:
             if os.path.exists('merged_profiles_'+exte+'.csv'): os.remove('merged_profiles_'+exte+'.csv')
-        if self.args['pwyrelab']: 
-            self.feat = [(f+'-PWY' if ( (not 'PWY' in f) and (not self.args['taxon'] in f) and (not 'UniRef90' in f) & (not 'marka' in f) \
-            and (not 'markp' in f) and (not 'PWYC' in f) & (not 'PF' in f)) else f) for f in self.feat]	
-        data = data.reset_index(drop=True)
+
+
+
+        #if self.args['pwyrelab']: 
+        #    self.feat = [(f+'-PWY' if ( (not 'PWY' in f) and (not self.args['taxon'] in f) and (not 'UniRef90' in f) & (not 'markab' in f) \
+        #    and (not 'markpres' in f) and (not 'PWYC' in f) & (not 'PF' in f)) else f) for f in self.feat]	
+        #lorelei = data[data['sampleID']=='H5']
+        #print lorelei['k__Viruses|p__Viruses_noname|c__Viruses_noname|o__Caudovirales|f__Myoviridae|g__Myoviridae_noname|s__Escherichia_phage_2_JES_2013'], ' before'
+        #old_index =  data.index.tolist()
+        #data = data.reset_index(drop=True)
+        #new_index = data.index.tolist()
+        #if old_index is new_index: print ' cavolacci e prio uguale allora e una linea inutile'
+        #print 'il vecchio indice e lungo: ', len(old_index), '  mentre il nuovo indice e lungo: ', len(new_index)
+        #for z,x in zip(old_index, new_index):
+        #    print z,x
+        #exit(1)
+        #lorelei = data[data['sampleID']=='H5']
+        #print lorelei['k__Viruses|p__Viruses_noname|c__Viruses_noname|o__Caudovirales|f__Myoviridae|g__Myoviridae_noname|s__Escherichia_phage_2_JES_2013'], ' after reset index'
+        #exit(1)
+
+
 
         if bool(self.args['wilcoxon']):
             column, dist1, dist2 = self.args['wilcoxon'].split(':')
@@ -392,8 +470,20 @@ class metadataset:
                     data = data[self.metadata + [k for k in features.keys()]]
                     for k in features.keys(): data.loc[:,k].apply(lambda a : a*features[k]*10 )##, axis=1)
                     feat = [k for k in features.keys()]
+ 
+        #lorelei = data[data['sampleID']=='H5']
+        #print lorelei['k__Viruses|p__Viruses_noname|c__Viruses_noname|o__Caudovirales|f__Myoviridae|g__Myoviridae_noname|s__Escherichia_phage_2_JES_2013'], ' before'
+        #exit(1)
 
-        data.drop(data.loc[:,self.feat].columns[data.loc[:,self.feat].max().astype(np.float64)==data.loc[:,self.feat].min().astype(np.float64)],axis=1,inplace=True)
+        ###print len(self.feat), ' before'
+
+        ###data = data.drop(data.loc[:, self.feat].columns[data.loc[:,self.feat].max().astype('float')==data.loc[:, self.feat].min().astype('float')], axis=1)
+
+        ###print len(self.feat), ' after'
+
+        #lorelei = data[data['sampleID']=='H5']
+        #print lorelei['k__Viruses|p__Viruses_noname|c__Viruses_noname|o__Caudovirales|f__Myoviridae|g__Myoviridae_noname|s__Escherichia_phage_2_JES_2013'], ' after drop'
+
 
         if self.args['output_file']: print 'Current dataset: %i features.' % len(self.feat)
         if self.args['output_file']: print 'Current dataset: %i samples.' % len(data.sampleID.tolist())
@@ -407,8 +497,11 @@ class metadataset:
  
         return data
 
+
     def send_output(self, data):
+
         if bool(self.args['dense_matrix']):
+
             is_negative_above_th = lambda feat_row : ((len(feat_row)-np.count_nonzero(feat_row))/float(len(feat_row)))
             stats = open('gene_family_rarefactions/statistics.txt','w')
             for th in self.args['zero_threshold']:
@@ -421,11 +514,26 @@ class metadataset:
             stats.close()
 
         else:
+
+            if self.args['select_columns']:
+                data = data[self.args['select_columns']]
+
+            if self.args['top_features']:
+                                
+                print data[15:25]
+                exit(1)
+
+                #data = data[]
+
+            if self.args['feat_only']:
+                data = data[['sampleID'] + self.feat]
+
             if not self.args['output_file']: 
                 datat = data.T
                 for i in datat.index.tolist(): 
                     print '\t'.join([i]+list(map(str, datat.loc[i])))
             else:
+
                 if self.args['transpose']:
                     data.to_csv(self.args['output_file'].split('.')[0]+'_Headers.csv',sep='\t',header=True,index=False)
                 elif self.args['both']:
