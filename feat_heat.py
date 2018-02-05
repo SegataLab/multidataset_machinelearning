@@ -86,6 +86,10 @@ class feature_heatmap(object):
         self.data_hot = self.data_hot[new_order]
         self.data_cold = self.data_cold[new_order]
         self.annotate = True
+
+        #print self.data['HanniganGD_2017']
+        ##exit(1)
+
         self.heatmap_clustering(new_order, color='warm')
 
 
@@ -210,13 +214,18 @@ class feature_heatmap(object):
         f = self.frames
         for piece in f: self.most_relevant_features += piece.index.tolist()[:self.n_imp_feat]
         self.most_relevant_features = list(set(self.most_relevant_features))
-        min_ = np.min([np.min(piece) for piece in f])
+        min_ = np.max([np.max(piece) for piece in f])
         red = [piece.loc[self.most_relevant_features] for piece in f]
         f = red[0]
+
         for r in red[1:]: f = f.join(r, how='outer')
         f['sum'] = f.sum(axis=1)
         f = f.fillna(min_).astype('int')
         f = f.sort_values('sum', ascending=True, axis=0)
+
+        #print f['HanniganGD_2017']
+        #exit(1)
+
         del f['sum']
         self.neg = [el[0] for el in sorted([(ft, np.sum(f.loc[ft, :].tolist())) \
 		for ft in f.index.tolist() if self.signs_[ft] < 0.], key=lambda el : el[1], reverse=True)]
@@ -264,6 +273,9 @@ class feature_heatmap(object):
         d.set_index('feat', inplace = True)        
 
         if not filename: d[ds] = [i+1 for i,f in enumerate(d[ds].tolist())]
+            #if ds.startswith('Hanni'):   
+            #     print d[ds]
+
         else: d['comparison'] = [i+1 for i,f in enumerate(d['comparison'].tolist())]
         return d
 
