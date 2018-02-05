@@ -45,7 +45,9 @@ class feature_heatmap(object):
         self.grid0 = grid0
         self.grid1 = grid1
         self.grid2 = grid2        
-        self.complete_ranking = '../ml/resultofcrossvalidation_ANYonANY_features:metaphlan_experimenttype:standard_rf_grid0:%s_grid1:%s_grid2:%s_FEATURE_RANKING.txt' %(self.grid0, self.grid1, self.grid2)
+        self.complete_ranking = '../ml/resultofcrossvalidation_ANYonANY_features:metaphlan_experimenttype:standard_rf_grid0:%s_grid1:%s_grid2:%s_FEATURE_RANKING.txt' \
+		%(self.grid0, self.grid1, self.grid2)
+        print 'ths is your reference \n ', self.complete_ranking
 
         self.cmap = cmap
         self.fig_fmt = fig_fmt
@@ -59,16 +61,18 @@ class feature_heatmap(object):
         self.metadata = self.read_metadata().T
         self.phylogenetic_mapper = dict()
         self.most_relevant_features = list()
-
         self.rename_spp = lambda s_ : s_.replace('unclassified','spp.') if s_.endswith('unclassified') else s_
         self.frames = self.concat_frames(lodo) 	## all the features taken fromt eh random forest result
-        self.signs_ = self.signs()
+        self.signs_ = self.signs()       
         self.data = self.datamatrix()
-        self.data = self.data.loc[self.pos + self.neg]
 
+        self.data_comparison = self.define_comparison( )
+        self.pos = self.data_comparison.loc[self.pos].sort_values('comparison', ascending=True).index.tolist()
+        self.neg = self.data_comparison.loc[self.neg].sort_values('comparison', ascending=False).index.tolist()        
+        self.data = self.data.loc[self.pos + self.neg]
         self.data_hot = self.data.loc[self.pos].astype('int')
         self.data_cold = self.data.loc[self.neg].astype('int')
-        self.data_comparison = self.define_comparison()
+
         self.data_comparison_hot = self.data_comparison.loc[self.pos].astype('int')
         self.data_comparison_cold = self.data_comparison.loc[self.neg].astype('int')
         self.data_hot.set_index([[k.replace('_',' ') for k in self.data_hot.index.tolist()]], inplace=True)
@@ -219,12 +223,9 @@ class feature_heatmap(object):
         f = red[0]
 
         for r in red[1:]: f = f.join(r, how='outer')
-        f['sum'] = f.sum(axis=1)
-        f = f.fillna(min_).astype('int')
-        f = f.sort_values('sum', ascending=True, axis=0)
-
-        #print f['HanniganGD_2017']
-        #exit(1)
+        f = f.fillna(1000).astype('int')
+        f['sum'] = f.apply(lambda R: np.sum([r for r in R if r!= 1000]), axis=1)
+        #f = f.sort_values('sum', ascending=True, axis=0)
 
         del f['sum']
         self.neg = [el[0] for el in sorted([(ft, np.sum(f.loc[ft, :].tolist())) \
@@ -232,7 +233,7 @@ class feature_heatmap(object):
         self.pos = [el[0] for el in sorted([(ft, np.sum(f.loc[ft, :].tolist())) \
 		for ft in f.index.tolist() if self.signs_[ft] > 0.], key=lambda el : el[1], reverse=False)]
         self.mid_point = int(np.ceil(np.median(f.values) / 10.) * 10 )
-        f = f.loc[self.pos + self.neg]        
+        #f = f.loc[self.pos + self.neg]        
         if self.db == 'metaphlan': 
             self.pos = [self.rename_spp(i[3:]) for i in self.pos]
             self.neg = [self.rename_spp(i[3:]) for i in self.neg]
@@ -273,9 +274,6 @@ class feature_heatmap(object):
         d.set_index('feat', inplace = True)        
 
         if not filename: d[ds] = [i+1 for i,f in enumerate(d[ds].tolist())]
-            #if ds.startswith('Hanni'):   
-            #     print d[ds]
-
         else: d['comparison'] = [i+1 for i,f in enumerate(d['comparison'].tolist())]
         return d
 
