@@ -13,7 +13,7 @@ import utils
 
 ## WITH RANDOM FOREST
 ## meteaphlan plot:				FengQ_2015 ZellerG_2014 CM_rescignocrc YuJ_2015 CM_lilt VogtmannE_2016 HanniganGD_2017 
-## python run.py crc --define study_condition:CRC:control -ds FengQ_2015 ZellerG_2014 CM_rescignocrc YuJ_2015 CM_lilt VogtmannE_2016 HanniganGD_2017 -db metaphlan -do cross_figures -g0 nt:1000 -g1 nsl:5 -g2 c:entropy -cm hot -w 0.0
+## python run.py crc --define study_condition:CRC:control -ds FengQ_2015 ZellerG_2014 CM_rescignocrc YuJ_2015 CM_lilt VogtmannE_2016 HanniganGD_2017 -db metaphlan -do cross_figures -g0 c:entropy -g1 nt:1000 -g2 nsl:5 -cm hot
 
 ## gene-families plot: 
 ## python run.py crc --define study_condition:CRC:control -ds FengQ_2015 ZellerG_2014 CM_rescignocrc YuJ_2015 CM_lilt VogtmannE_2016 HanniganGD_2017  -db genefamilies -do cross_figures -g0 nt:1000 -g1 nsl:5 -g2 df -cm hot -w 0.4
@@ -22,13 +22,12 @@ import utils
 ## python run.py crc --define study_condition:CRC:control -ds FengQ_2015 ZellerG_2014 CM_rescignocrc YuJ_2015 CM_lilt VogtmannE_2016 HanniganGD_2017  -db pathways -do cross_figures -g0 nt:1000 -g1 nsl:5 -g2 c:entropy -cm hot -w 1.5
 
 ## markers
-##1)  python run.py crc --define study_condition:CRC:control -ds FengQ_2015 ZellerG_2014 CM_rescignocrc YuJ_2015 CM_lilt VogtmannE_2016 HanniganGD_2017 -db markers -do cross_figure -g0 nt:1000 -g1 nsl:5 -g2 df -cm hot 
+##1)  python run.py crc --define study_condition:CRC:control -ds FengQ_2015 ZellerG_2014 CM_rescignocrc YuJ_2015 CM_lilt VogtmannE_2016 HanniganGD_2017 -db markers -do cross_figures -g0 nt:1000 -g1 nsl:5 -g2 df -cm hot 
 
-
-##2)  python run.py crc --define study_condition:CRC:control -ds ZellerG_2014 YuJ_2015 FengQ_2015 VogtmannE_2016 CM_rescignocrc CM_lilt HanniganGD_2017 -db markers -do cross_figure -g0 c:gini -g1 nsl:5 -g2 df -cm hot  
+##2)  python run.py crc --define study_condition:CRC:control -ds ZellerG_2014 YuJ_2015 FengQ_2015 VogtmannE_2016 CM_rescignocrc CM_lilt HanniganGD_2017 -db markers -do cross_figures -g0 c:gini -g1 nsl:5 -g2 df -cm hot  
 
 ## WITH LINEAR SVM
-## 3) python run.py crc --define study_condition:CRC:control -ds ZellerG_2014 YuJ_2015 FengQ_2015 VogtmannE_2016 CM_rescignocrc CM_lilt HanniganGD_2017 -db markers -do cross_figure -g0 null -g1 null -g2 null -al lsvm 
+## 3) python run.py crc --define study_condition:CRC:control -ds ZellerG_2014 YuJ_2015 FengQ_2015 VogtmannE_2016 CM_rescignocrc CM_lilt HanniganGD_2017 -db markers -do cross_figures -g0 null -g1 null -g2 null -al lsvm -ft MachineLearning_crc_markers_linSVM
 
 
 class score(object):
@@ -76,7 +75,7 @@ class cross_figures(object):
         test_n = self.utils.test_magns(('_'.join(db) if isinstance(db, list) else db), test, algo, grid0, grid1, grid2, start)
         avg_scores = dict([(d, [0,0]) for d in self.datasets])
 
-        if self.resort_names:
+        if self.resort_names or db == 'metaphlan':
             new_order = [dataset[0] for dataset in sorted([[cross, self.utils.transfer_([cross,cross]\
 			, db, test, algo, grid0, grid1, grid2, start)] for cross in self.datasets], key=lambda a : a[1], reverse=True)]
         else: 
@@ -84,24 +83,23 @@ class cross_figures(object):
 
         norm_mean = 0.0
         for couple in self.couples:
-            if self.utils.isonedata(couple): 
-                pools, cross_validation = [couple], True                
-            else: 
-                pools, cross_validation = [couple, [couple[1],couple[0]]], False
+            if self.utils.isonedata(couple): pools, cross_validation = [couple], True 
+
+            else: pools, cross_validation = [couple, [couple[1],couple[0]]], False
 
             for pool in pools:
                 score_, coordinates, n = self.utils.transfer_(pool, db, test, algo, grid0, grid1, grid2, start) #, new_order)
                 self.scores.cross_study.append(score(score_, coordinates))
 
                 if cross_validation: 
-                    norm_mean += score_*test_n[pool[0]]
+                    norm_mean += score_ * test_n[pool[0]]
                 else:
                     avg_scores[pool[0]][0] += score_ * test_n[pool[1]]           
                     avg_scores[pool[1]][1] += score_
 
         for i,d in enumerate(new_order):
             self.scores.rmean.append(score(avg_scores[d][1]/float(len(self.datasets)-1), i))   
-            self.scores.cmean.append(score(avg_scores[d][0]/float(sum([test_n[ds] for ds in self.datasets if ds!=d])), i)) # [new_order.index(d), len(self.datasets)]))
+            self.scores.cmean.append(score(avg_scores[d][0]/float(sum([test_n[ds] for ds in self.datasets if ds!=d])), i)) 
 
         mean, div = [], 0
         lodo_row = len(self.datasets) + 1 ## changed 2
@@ -149,7 +147,7 @@ class cross_figures(object):
         pos1_lodo_mean = self.ax_lodo_mean.get_position()
 
         pos2_cbar = [pos1_cbar.x0 + 0.015, pos1_cbar.y0 + 0.08, pos1_cbar.width * 0.7, pos1_cbar.height * 0.80]
-        pos2_cross = [pos1_cross.x0, pos1_cross.y0, pos1_cross.width, pos1_cross.height]
+        pos2_cross = [pos1_cross.x0, pos1_cross.y0, pos1_cross.width + 0.001, pos1_cross.height]
         pos2_rmean = [pos1_cross.x0, pos1_rmean.y0, pos1_cross.width + 0.001, pos1_rmean.height + 0.01]
         #pos2_rmean = [pos1_cross.x0, pos1_rmean.y0, pos1_cross.width, pos1_rmean.height + 0.01]
         pos2_cmean = [pos1_cmean.x0 - 0.01, pos1_cross.y0, pos1_cmean.width + 0.01, pos1_cross.height] ## same height of th cross
