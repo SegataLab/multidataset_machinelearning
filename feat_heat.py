@@ -101,7 +101,7 @@ class feature_heatmap(object):
         norm_ = matplotlib.colors.Normalize(self.mid_point, 1)
         revnorm = matplotlib.colors.Normalize(1, self.mid_point)
         fig = plt.figure(figsize=(9,14))
-        gs = gridspec.GridSpec(3,3, width_ratios=[10,1,1], height_ratios=[2,10,10])
+        gs = gridspec.GridSpec(3,3, width_ratios=[10,1,1], height_ratios=[2,10,8])
 
         self.ax_hclus = plt.subplot(gs[0, 0])
         self.ax_hot = plt.subplot(gs[1, 0])
@@ -134,10 +134,9 @@ class feature_heatmap(object):
 
         for lab in self.ax_hot.get_yticklabels(): lab.set_style('italic')
         for lab in self.ax_cold.get_yticklabels(): lab.set_style('italic')
-        cbar_hot.set_ticks(range(self.mid_point, 1, -11)) 
-        cbar_hot.set_ticklabels(list(map(str, range(1, self.mid_point +1, 11))))
-        cbar_cold.set_ticks(range(1, self.mid_point +1, 11)) 
-
+        cbar_hot.set_ticks((np.linspace(self.mid_point, 1, num=len(self.pos), endpoint=True, dtype=np.int64)))
+        cbar_hot.set_ticklabels(list(map(str, (np.linspace(1, self.mid_point, num=len(self.pos), endpoint=True, dtype=np.int64)))))
+        cbar_cold.set_ticks((np.linspace(1, self.mid_point, num=len(self.neg), endpoint=True, dtype=np.int64)))
         ##cbar_cold.set_ticklabels()
         ##self.ax_cbar_hot.set_ylabel('Feature Importance Rank', size=16)
         self.ax_cbar_hot.yaxis.set_ticks_position('right')
@@ -170,6 +169,7 @@ class feature_heatmap(object):
         plt.setp(self.ax_cold.get_xticklabels(), rotation=70, ha='right')
         plt.setp(self.ax_comparison_cold.get_xticklabels(), rotation=70, ha='right')
         plt.suptitle('Random Forest Feature Ranking')
+
         if self.db == 'metaphlan': 
             plt.savefig('%s/FeatureHeatmap_%s.%s' %(self.save_fig, color, self.fig_fmt), dpi=600)
         elif self.db == 'pathways':
