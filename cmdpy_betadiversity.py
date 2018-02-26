@@ -34,9 +34,7 @@ class beta_diversity(object):
         self.legend = [ll.split() for ll in list(set([' '.join(l) for l in self.atts_of_sample.values()]))] 
 
         self.sample_and_coordinates = self.stack_sample_coordinates() \
-
 	    if not self.args['load_coordinates'] \
-
 	    else pd.read_csv(self.args['load_coordinates'], sep='\t', header=0, index_col=0)        
 
         if self.args['save_coordinates']: self.save_coordinates(self.args['save_coordinates'])
@@ -52,7 +50,9 @@ class beta_diversity(object):
 
 
     def read_params(self, args):
+
         p = ap.ArgumentParser()
+
         distances = ['lbraycurtis','sbraycurtis','canberra','chebyshev','correlation','dice','hamming','jaccard','kulsinski'\
 	    ,'mahalanobis','matching','minkowski','rogerstanimoto','russellrao','seuclidean','sokalmichener','sokalsneath'\
 	    ,'sqeuclidean','yule','cityblock','cosine','euclidean','l1','l2','manhattan','braycurtis','precomputed'] 
@@ -72,9 +72,14 @@ class beta_diversity(object):
         arg(	'-ll', '--legend_loc', default='lower center', type=str)
         arg(	'-fmt', '--format', default='png', type=str, choices=['svg','png'])
 
+
         arg(	'--no_ordination', action='store_false')
         arg(	'--boxplot', action='store_true')
         arg(	'-ex', '--explain', action='store_true')
+
+        arg(	'--title', type=str, default='Ordination Plot')
+        arg(	'--dot_size', type=float, default=10)
+
 
         return vars(p.parse_args())
 
@@ -169,21 +174,33 @@ class beta_diversity(object):
 
     def scatter_plot(self, ax=None):
 
+        sns.set_style('darkgrid')
         fig = False
 
         if not bool(ax):
-            fig, ax = plt.subplots(figsize=(10,10))
+
+            fig, ax = plt.subplots(figsize=(8,6))
+
+            if self.args['algorithm'] == 'mds':
+
+                ax.set_xlim(-0.8, 0.8)
+                ax.set_ylim(-0.8, 0.8)
+                ax.xaxis.set_ticks(np.arange(-0.6, 0.8, 0.2))
+                ax.yaxis.set_ticks(np.arange(-0.6, 0.8, 0.2))
 
         for c in self.sample_in_class.keys():
 
             present = [s for s in self.sample_in_class[c] if s in set(self.sample_and_coordinates.index.tolist())]
             present_sample_frame = self.sample_and_coordinates.loc[present]
 
-            scatterp = sns.regplot(x='x1', y='x2', data=present_sample_frame, ax=ax, scatter=True, fit_reg=False, ax=ax\
+            scatterp = sns.regplot(x='x1', y='x2', data=present_sample_frame, ax=ax, scatter=True, fit_reg=False, scatter_kws={'s': self.args['dot_size']}\
 		, label=self.atts_of_sample[present[0]][0], marker=self.atts_of_sample[present[0]][2], color=self.atts_of_sample[present[0]][1])
 
         if bool(fig):
-            ax.legend(loc=self.args['legend_loc'])
+
+            plt.legend(bbox_to_anchor=(0., 1.02, 1., 1.102), loc=3, ncol=3, mode="expand", borderaxespad=1., fontsize=8)
+            plt.subplots_adjust(top=0.8)
+            plt.suptitle(self.args['title'], fontsize=8)
             plt.savefig(self.args['stdout']+'.'+self.args['format'], dpi=400) 
 
         else:

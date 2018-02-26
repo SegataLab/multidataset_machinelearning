@@ -9,31 +9,37 @@ import seaborn as sns; sns.set()
 import matplotlib.gridspec as gridspec
 import itertools
 from matplotlib import rc
+matplotlib.rcParams['svg.fonttype'] = 'none'
 import utils
+
 
 ## WITH RANDOM FOREST
 ## meteaphlan plot:				FengQ_2015 ZellerG_2014 CM_rescignocrc YuJ_2015 CM_lilt VogtmannE_2016 HanniganGD_2017 
 ## python run.py crc --define study_condition:CRC:control -ds FengQ_2015 ZellerG_2014 CM_rescignocrc YuJ_2015 CM_lilt VogtmannE_2016 HanniganGD_2017 -db metaphlan -do cross_figures -g0 c:entropy -g1 nt:1000 -g2 nsl:5 -cm hot
 
 ## gene-families plot: 
-## python run.py crc --define study_condition:CRC:control -ds FengQ_2015 ZellerG_2014 CM_rescignocrc YuJ_2015 CM_lilt VogtmannE_2016 HanniganGD_2017  -db genefamilies -do cross_figures -g0 nt:1000 -g1 nsl:5 -g2 df -cm hot -w 0.4
+## python run.py crc --define study_condition:CRC:control -ds FengQ_2015 ZellerG_2014 CM_rescignocrc YuJ_2015 CM_lilt VogtmannE_2016 HanniganGD_2017 -db genefamilies -do cross_figures -g0 nsl:5 -g1 nt:1000 -g2 df -cm hot
+
+## new attempt on gene families
+## python run.py crc --define study_condition:CRC:control -ds FengQ_2015 ZellerG_2014 CM_rescignocrc YuJ_2015 CM_lilt VogtmannE_2016 HanniganGD_2017 -db genefamilies -do cross_figures -g0 nsl:5 -g1 nt:1000 -g2 df -cm hot -ft MachineLearning_crc_genefamilies_last_attempt_before_PUB
 
 ## pathways
 ## python run.py crc --define study_condition:CRC:control -ds FengQ_2015 ZellerG_2014 CM_rescignocrc YuJ_2015 CM_lilt VogtmannE_2016 HanniganGD_2017  -db pathways -do cross_figures -g0 nt:1000 -g1 nsl:5 -g2 c:entropy -cm hot -w 1.5
 
 ## markers
 ##1)  python run.py crc --define study_condition:CRC:control -ds FengQ_2015 ZellerG_2014 CM_rescignocrc YuJ_2015 CM_lilt VogtmannE_2016 HanniganGD_2017 -db markers -do cross_figures -g0 nt:1000 -g1 nsl:5 -g2 df -cm hot 
-
 ##2)  python run.py crc --define study_condition:CRC:control -ds ZellerG_2014 YuJ_2015 FengQ_2015 VogtmannE_2016 CM_rescignocrc CM_lilt HanniganGD_2017 -db markers -do cross_figures -g0 c:gini -g1 nsl:5 -g2 df -cm hot  
 
 ## WITH LINEAR SVM
 ## 3) python run.py crc --define study_condition:CRC:control -ds ZellerG_2014 YuJ_2015 FengQ_2015 VogtmannE_2016 CM_rescignocrc CM_lilt HanniganGD_2017 -db markers -do cross_figures -g0 null -g1 null -g2 null -al lsvm -ft MachineLearning_crc_markers_linSVM
 
 
+
 class score(object):
     def __init__(self, sc, cr):
         self.auc = sc
         self.where = cr
+
 
 class scores(object):
     def __init__(self):
@@ -44,12 +50,14 @@ class scores(object):
         self.rmean = list()
         self.lodo_mean = list()
 
+
 class cross_figures(object):
     left, width = .25, .5
     bottom, height = .25, .5
     right = left + width
     top = bottom + height
     save_folder = '../Images/'
+
 
     def __init__(self, datasets, title, defined_problem, which_python, cmap, width, fig_title, fig_fmt):
 	self.utils = utils.usefullfuncs(datasets)
@@ -70,25 +78,27 @@ class cross_figures(object):
 
 
     def plot_data(self, db, test, algo, grid0, grid1, grid2, start):
+
         scores_cross, scores_cmean, scores_rmean, score_cvalidation, scores_lodo = [], [], [], [], []
         coors = []
-        test_n = self.utils.test_magns(('_'.join(db) if isinstance(db, list) else db), test, algo, grid0, grid1, grid2, start)
+        test_n = self.utils.test_magns(('_'.join(db) if isinstance(db, list) else db), algo, test, grid0, grid1, grid2, start)
         avg_scores = dict([(d, [0,0]) for d in self.datasets])
 
         if self.resort_names or db == 'metaphlan':
             new_order = [dataset[0] for dataset in sorted([[cross, self.utils.transfer_([cross,cross]\
-			, db, test, algo, grid0, grid1, grid2, start)] for cross in self.datasets], key=lambda a : a[1], reverse=True)]
+			, db, algo, test, grid0, grid1, grid2, start)] for cross in self.datasets], key=lambda a : a[1], reverse=True)]
         else: 
             new_order = self.datasets
 
         norm_mean = 0.0
+
         for couple in self.couples:
             if self.utils.isonedata(couple): pools, cross_validation = [couple], True 
 
             else: pools, cross_validation = [couple, [couple[1],couple[0]]], False
 
             for pool in pools:
-                score_, coordinates, n = self.utils.transfer_(pool, db, test, algo, grid0, grid1, grid2, start) #, new_order)
+                score_, coordinates, n = self.utils.transfer_(pool, db, algo, test, grid0, grid1, grid2, start) #, new_order)
                 self.scores.cross_study.append(score(score_, coordinates))
 
                 if cross_validation: 
@@ -107,7 +117,7 @@ class cross_figures(object):
         self.scores.norm_mean.append(score(norm_mean, [len(self.datasets),len(self.datasets)]))
 
         for i,d in enumerate(new_order): ## bug found
-            score_, coordinate, n = self.utils.lodo_(d, db, test, algo, grid0, grid1, grid2, start) ##, new_order)
+            score_, coordinate, n = self.utils.lodo_(d, db, algo, test, grid0, grid1, grid2, start) ##, new_order)
             mean.append(score_ * n)
             div += n
             self.scores.lodo.append(score(score_, i))  ###(lodo_row, i))
@@ -136,6 +146,7 @@ class cross_figures(object):
         self.feature_used = n_feat
         self.lodo_data = self.lodo_data[new_order]
         ##self.rmean_data = self.rmean_data[new_order]
+
 
     def define_proportions(self):
         pos1_cross = self.ax_cross.get_position() 
@@ -173,6 +184,7 @@ class cross_figures(object):
         self.ax_norm_mean.set_position(pos2_norm)
         self.ax_cbar.set_position(pos2_cbar)
         self.ax_lodo_mean.set_position(pos2_lodo_mean)
+
 
 
     def plot(self, db, algo, grid0, grid1, grid2, start):
@@ -246,4 +258,4 @@ class cross_figures(object):
 
 
 if __name__ == '__main__': 
-    print '' 
+    print 'auuuuuuuuuuuuuuuu' 
