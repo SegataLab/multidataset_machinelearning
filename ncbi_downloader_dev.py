@@ -441,8 +441,9 @@ class Download(object):
                 print 'Don ask me why, not this one, but the other 6000.'
                 return
 
-        pp = mp.ProcessingPool(self.ncores)
-        pp.map(getfree, all_the_samples)
+        
+        with mp.ProcessingPool(self.ncores) as pp:
+            pp.map(getfree, all_the_samples)
 
         self.listFAILURES()
         self.log_all(all_the_samples, self.LOG)
