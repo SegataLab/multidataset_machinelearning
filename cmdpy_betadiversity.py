@@ -16,6 +16,8 @@ from sklearn.metrics import pairwise_distances
 import seaborn as sns
 import pandas as pd
 import numpy as np
+import itertools
+from scipy import stats
 
 
 class beta_diversity(object):
@@ -23,43 +25,70 @@ class beta_diversity(object):
     def __init__(self, params=None):
 
         if not isinstance(params, dict):  self.args = self.read_params(sys.argv)
-
         else: self.args = params
 
         self.stdin = pd.read_csv(self.args['stdin'], sep='\t', header=None, index_col=0)
- 
-        self.shapes_types = '.,ov^<>1234sp*hH+xDd|_'
-        self.coordinates, self.metadata, self.explained_var = self.beta_div()
-        self.sample_in_class, self.atts_of_sample, self.sample_to_class = self.guess_classes(self.metadata)
-        self.legend = [ll.split() for ll in list(set([' '.join(l) for l in self.atts_of_sample.values()]))] 
 
-        self.sample_and_coordinates = self.stack_sample_coordinates() \
+        if self.args['alpha_diversity']:
+            f = self.edit_(self.stdin, self.args['sample_id'], self.args['feature_identifier'])
+            data = f.loc[[i for i in f.index.tolist() if (self.args['feature_identifier'] in i)]].T
+            metadata = f.loc[[i for i in f.index.tolist() if (not self.args['feature_identifier'] in i)]]
 
-	    if not self.args['load_coordinates'] \
+            self.sample_in_class, self.atts_of_sample, self.sample_to_class = self.guess_classes(metadata)
+            self.legend = [ll.split() for ll in list(set([' '.join(l) for l in self.atts_of_sample.values()]))]
+            self.plot_alpha_diversity(data, metadata)
 
-	    else pd.read_csv(self.args['load_coordinates'], sep='\t', header=0, index_col=0)        
+        else:
+            self.shapes_types = '.,ov^<>1234sp*hH+xDd|_'
+            self.coordinates, self.metadata, self.explained_var = self.beta_div()
+            self.sample_in_class, self.atts_of_sample, self.sample_to_class = self.guess_classes(self.metadata)
 
-        if self.args['save_coordinates']: self.save_coordinates(self.args['save_coordinates'])
+            self.legend = [ll.split() for ll in list(set([' '.join(l) for l in self.atts_of_sample.values()]))] 
+            self.legend_dict = dict([(t[0],t[1:]) for t in self.legend])
 
-        if self.args['mask']: self.mask()
+            self.couples_by_class = dict([(k, list(map(list, itertools.combinations(self.sample_in_class[k], 2)))  \
+                if not self.args['intra_individual'] else \
+                [ss for ss in list(map(list, itertools.combinations(self.sample_in_class[k], 2))) if ss[0]==ss[1]] \
+                ) for k in self.sample_in_class.keys()])
 
-        if self.args['explain']: self.explain()
+            #self.classes_by_couple = dict([(v,k) for k,v in self.couples_by_class.items()])
 
-        if not (not self.args['no_ordination']): self.scatter_plot()
+            self.sample_and_coordinates = self.stack_sample_coordinates() \
+                if not self.args['load_coordinates'] \
+                else pd.read_csv(self.args['load_coordinates'], sep='\t', header=0, index_col=0)
+            if self.args['save_coordinates']: self.save_coordinates(self.args['save_coordinates'])
+            if self.args['mask']: self.mask()
+            if self.args['explain']: self.explain()
+    
+            if (self.args['boxplot']):
+                self.dist_mat = pd.DataFrame(data=self.coordinates, columns=self.metadata.loc['sampleID', :], index=self.metadata.loc['sampleID', :])
+                self.box_plot()
 
-        if self.args['boxplot']: print 'mia nonna'         
-
+            else:
+                #self.sample_and_coordinates = self.stack_sample_coordinates() \
+	        #    if not self.args['load_coordinates'] \
+	        #    else pd.read_csv(self.args['load_coordinates'], sep='\t', header=0, index_col=0)        
+                #if self.args['save_coordinates']: self.save_coordinates(self.args['save_coordinates'])
+                #if self.args['mask']: self.mask()
+                #if self.args['explain']: self.explain()
+                if not (not self.args['no_ordination']): 
+                    self.scatter_plot()
 
 
     def read_params(self, args):
+
         p = ap.ArgumentParser()
+
         distances = ['lbraycurtis','sbraycurtis','canberra','chebyshev','correlation','dice','hamming','jaccard','kulsinski'\
 	    ,'mahalanobis','matching','minkowski','rogerstanimoto','russellrao','seuclidean','sokalmichener','sokalsneath'\
 	    ,'sqeuclidean','yule','cityblock','cosine','euclidean','l1','l2','manhattan','braycurtis','precomputed'] 
 
         arg = p.add_argument
+
         arg(	'-if', '--stdin', default=sys.stdin, type=str)
         arg(	'-of', '--stdout', default=None, type=str)
+        arg(	'-adiv', '--alpha_diversity', action='store_true')
+
         arg(	'-sc', '--save_coordinates', default=None, type=str)
         arg(	'-lc', '--load_coordinates', default=None, type=str)
         arg(	'-d', '--distance', default='braycurtis', type=str, choices=distances)
@@ -71,10 +100,16 @@ class beta_diversity(object):
 
         arg(	'-ll', '--legend_loc', default='lower center', type=str)
         arg(	'-fmt', '--format', default='png', type=str, choices=['svg','png'])
-
         arg(	'--no_ordination', action='store_false')
         arg(	'--boxplot', action='store_true')
         arg(	'-ex', '--explain', action='store_true')
+        arg(	'--annot', action='store_true')
+
+        arg(	'--title', type=str, default='Ordination Plot')
+        arg(	'--dot_size', type=float, default=10)
+        arg(	'-txt', '--text_on', type=str, default=None)
+
+        arg(	'--intra_individual', action='store_true')
 
         return vars(p.parse_args())
 
@@ -139,59 +174,196 @@ class beta_diversity(object):
     def transformation(self, way, f, feat_id, distance):
         data = f.loc[[i for i in f.index.tolist() if (feat_id in i)]].T
         metadata = f.loc[[i for i in f.index.tolist() if (not feat_id in i)]]
-        T_func = self.pca if way == 'pca' else (self.mds if way == 'mds' else self.nmds)
-        if T_func == self.pca: transformed, exp_var = T_func(data)
-        else: transformed, exp_var = T_func(self.compute_distances(data,distance)), None
-        return transformed, metadata, exp_var
+        T_func = (self.pca if way == 'pca' else (self.mds if way == 'mds' else self.nmds)) if not self.args['boxplot'] else 'just_the_matrix'
+        if T_func != 'just_the_matrix':
+            if T_func == self.pca: 
+                transformed, exp_var = T_func(data)
+            else: 
+                transformed, exp_var = T_func(self.compute_distances(data,distance)), None
+            return transformed, metadata, exp_var
+        else:
+            return self.compute_distances(data,distance), metadata, None
+            #return pd.DataFrame(self.compute_distances(data,distance)\
+            #     , columns=metadata.loc[self.args['sample_id'], :].tolist()\
+            #     , index=metadata.loc[self.args['sample_id'], :].tolist()), metadata, None
 
 
     def beta_div(self):
         edt = self.edit_(self.stdin, self.args['sample_id'], self.args['feature_identifier'])
-        transform, metadata, exp_var = self.transformation(self.args['algorithm'], edt, self.args['feature_identifier'], self.args['distance'])
-        return transform, metadata, exp_var
+        transformed, metadata, exp_var = self.transformation(self.args['algorithm'], edt, self.args['feature_identifier'], self.args['distance'])
+        return transformed, metadata, exp_var
 
 
-    def stack_sample_coordinates(self):
-        toreturn = pd.DataFrame({self.args['sample_id']: self.metadata.loc[self.args['sample_id'], :].tolist(), 'x1': self.coordinates[:, 0], 'x2': self.coordinates[:, 1]})
-        toreturn.index = toreturn[self.args['sample_id']]
-        del toreturn[self.args['sample_id']]
+    def stack_sample_coordinates(self, distmat=None):
+        if not distmat:
+            toreturn = pd.DataFrame({self.args['sample_id']: self.metadata.loc[self.args['sample_id'], :].tolist(), 'x1': self.coordinates[:, 0], 'x2': self.coordinates[:, 1]})
+            toreturn.index = toreturn[self.args['sample_id']]
+            del toreturn[self.args['sample_id']]
+        else:
+            toreturn = pd.DataFrame(distmat, columns=self.metadata.loc[self.args['sample_id'], :].tolist(), index=self.metadata.loc[self.args['sample_id'], :].tolist())
         return toreturn
 
 
     def save_coordinates(self, coordinates_f): self.sample_and_coordinates.to_csv(coordinates_f, sep='\t', header=True, index=True)
 
     
+
     def mask(self):
         self.sample_and_coordinates = self.sample_and_coordinates.drop([i for i in self.sample_and_coordinates.index.tolist() if self.sample_to_class[i] in self.args['mask']])
         for i in self.sample_to_class.keys(): 
             if self.sample_to_class[i] in self.args['mask']: del self.atts_of_sample[i]        
 
 
+
     def scatter_plot(self, ax=None):
 
+        sns.set_style('darkgrid')
         fig = False
-
         if not bool(ax):
-            fig, ax = plt.subplots(figsize=(10,10))
-
+            fig, ax = plt.subplots(figsize=(8,6))
+            if self.args['algorithm'] == 'mds':
+                ax.set_xlim(-0.8, 0.8)
+                ax.set_ylim(-0.8, 0.8)
+                ax.xaxis.set_ticks(np.arange(-0.6, 0.8, 0.2))
+                ax.yaxis.set_ticks(np.arange(-0.6, 0.8, 0.2))
         for c in self.sample_in_class.keys():
-
             present = [s for s in self.sample_in_class[c] if s in set(self.sample_and_coordinates.index.tolist())]
             present_sample_frame = self.sample_and_coordinates.loc[present]
-
-            scatterp = sns.regplot(x='x1', y='x2', data=present_sample_frame, ax=ax, scatter=True, fit_reg=False, ax=ax\
+            scatterp = sns.regplot(x='x1', y='x2', data=present_sample_frame, ax=ax, scatter=True, fit_reg=False, scatter_kws={'s': self.args['dot_size']}\
 		, label=self.atts_of_sample[present[0]][0], marker=self.atts_of_sample[present[0]][2], color=self.atts_of_sample[present[0]][1])
-
+            if self.args['annot']:
+                for sample,x,y in zip(present_sample_frame.index.tolist(), present_sample_frame['x1'].tolist(), present_sample_frame['x2'].tolist()):	
+                    ax.annotate(sample, (float(x), float(y)), size=3)            
         if bool(fig):
-            ax.legend(loc=self.args['legend_loc'])
+            plt.legend(bbox_to_anchor=(0., 1.02, 1., 1.102), loc=3, ncol=3, mode="expand", borderaxespad=1., fontsize=8)
+            plt.subplots_adjust(top=0.8)
+            plt.suptitle(self.args['title'], fontsize=8)
             plt.savefig(self.args['stdout']+'.'+self.args['format'], dpi=400) 
-
+            return 'Got.'
         else:
             return scatterp
 
 
+
+    def betadiv_statistical_support(self, text):
+        print '\n============================================='
+        print 'Statistical Support ' + ('about ' + self.args['title'] if self.args['title'] else '')      
+        print '=============================================\n'
+        for group_a,group_b in self.combinations_of_classes:
+            statistic,p_value = stats.ttest_ind(self.groups[group_a], self.groups[group_b], axis=0, equal_var=False)
+            print ' - '.join(list((group_a,group_b))), 
+            print ' P-PVALUE = ' + str(p_value), 
+            print 'sign. TRUE' if (p_value < 0.05) else ''
+        print '\n=============================================\n'
+
+
+
+    def box_plot(self):
+       
+        sns.set_style('darkgrid')        
+        #fig, ax = plt.subplots(figsize=(8,6)) 
+
+        class box_plot_object(object):
+            def __init__(self, class_, color_, cat_var_, couple_of_samples, dist_mat):
+                self.class_ = class_
+                self.color_ = color_
+                self.cat_var_ = cat_var_
+                self.beta_diversity = dist_mat.get_value(couple_of_samples[0], couple_of_samples[1])
+  
+        data = pd.DataFrame([[ob.class_, ob.color_, ob.cat_var_, ob.beta_diversity] \
+                for ob in [box_plot_object(cl,co,ct,cp,self.dist_mat) for cl,co,ct,cp in zip(\
+		  list(itertools.chain.from_iterable([[c[0] for i in range(len(self.couples_by_class[c[0]]))] for c in self.legend]))\
+		, list(itertools.chain.from_iterable([[c[1] for i in range(len(self.couples_by_class[c[0]]))] for c in self.legend]))\
+		, list(itertools.chain.from_iterable([[c[2] for i in range(len(self.couples_by_class[c[0]]))] for c in self.legend]))\
+		, list(itertools.chain.from_iterable([[couple for couple in self.couples_by_class[c[0]]] for c in self.legend])))]]\
+                ,   columns=['', 'color', 'group_by', 'Beta-Diversity'])  ## ]))
+
+        ax = sns.swarmplot(data=data, x='', y='Beta-Diversity', hue=None if len(list(set(data['group_by'].tolist())))==1 else 'group_by', dodge=True, s=4)
+        ax = sns.boxplot(data=data, x='', y='Beta-Diversity', hue=None if len(list(set(data['group_by'].tolist())))==1 else 'group_by')
+
+        data.columns = ['class', 'color', 'group_by', 'Beta-Diversity']
+        self.groups = dict([(cl, data.loc[data['class'].isin([cl]), 'Beta-Diversity'].tolist()) for cl in list(set(data['class'].tolist()))])
+        self.combinations_of_classes = list(map(tuple, itertools.combinations(list(set(data['class'].tolist())), 2)))
+
+        plt.setp(ax.get_xticklabels(), rotation=38, ha='right')
+        plt.subplots_adjust(bottom=.3) 
+        plt.suptitle(self.args['title'], fontsize=10)
+        plt.savefig(self.args['stdout']+'.'+self.args['format'], dpi=400)
+
+        self.betadiv_statistical_support(self.args['text_on'])
+
+
+
+    def plot_alpha_diversity(self, f, meta):
+
+        sns.set_style('darkgrid')
+        samples = dict([(e+1,n) for e,n in enumerate(meta.loc['sampleID', :].tolist())])
+
+        self.simple_richness = dict([(samples[i], np.count_nonzero(f.loc[i].astype(float).tolist())) for i in f.index.tolist()])
+        self.log_richness = dict([(k,np.log(v)) for k,v in self.simple_richness.items()])
+        self.shannon_richness = dict([(samples[i], -np.sum(np.array(f.loc[i].astype(float).tolist(), dtype=np.float64) * 0.01\
+        * np.nan_to_num(np.log(np.array(f.loc[i].astype(float).tolist(), dtype=np.float64) * 0.01)))) for i in f.index.tolist()])
+        self.ginisimpson_richness = dict([(samples[i], 1.-np.sum(np.power(np.array(f.loc[i].astype(float).tolist(), dtype=np.float64) * 0.01, 2))) for i in f.index.tolist()])
+					
+        data = pd.DataFrame( [ (self.simple_richness[sam]\
+                   , self.log_richness[sam]\
+                   , self.shannon_richness[sam]\
+                   , self.ginisimpson_richness[sam]\
+                   , self.atts_of_sample[sam][2]\
+                   , self.atts_of_sample[sam][0])  for sam in samples.values()]\
+             , columns = [ 'Richness', 'Log Richness', 'Shannon Richness', 'Gini-Simpson Richness', 'group_by', '' ] )
+
+        for type_of_richness in ['Richness', 'Log Richness', 'Shannon Richness', 'Gini-Simpson Richness']:
+            data_ = data[[type_of_richness, 'group_by', '']]
+         
+            fig = plt.figure(figsize=(8,6))
+            ax = sns.swarmplot(data=data_, x='', y=type_of_richness, hue=None if len(list(set(data['group_by'].tolist())))==1 else 'group_by', dodge=True, s=4)
+            ax = sns.boxplot(data=data_, x='', y=type_of_richness, hue=None if len(list(set(data['group_by'].tolist())))==1 else 'group_by')
+                            
+            plt.setp(ax.get_xticklabels(), rotation=38, ha='right')
+            plt.subplots_adjust(bottom=.3)
+            plt.suptitle(self.args['title'], fontsize=10)
+            plt.savefig(self.args['stdout']+type_of_richness.replace(' ','')+'.'+self.args['format'], dpi=400)
+
+
+        data.columns = ['Richness', 'Log Richness', 'Shannon Richness', 'Gini-Simpson Richness', 'group_by', 'class']
+        self.groups = dict([(class_, dict([(type_, np.array([given_dict[s] for s in samples.values() \
+          if s in self.sample_in_class[class_]], dtype=np.float64)) for type_,given_dict in zip(\
+            ['Richness', 'Log Richness', 'Shannon Richness', 'Gini-Simpson Richness']\
+              , [self.simple_richness, self.log_richness, self.shannon_richness, self.ginisimpson_richness])]))\
+                for class_ in list(set(data['class'].tolist()))])
+
+        self.combinations_of_classes = list(map(tuple, itertools.combinations(list(set(data['class'].tolist())), 2)))
+        self.alphadiv_statistical_support(self.args['text_on']) 
+
+
+
+
+    def alphadiv_statistical_support(self, text):
+
+        for richness in ['Richness', 'Log Richness', 'Shannon Richness', 'Gini-Simpson Richness']:
+
+            print '\n==============================================================================' 
+            print 'Statistical Support for Alpha-Diversity'  + self.args['title'] if self.args['title'] else ''
+            print '\tINDEX = %s' %richness 
+            print '================================================================================\n'
+
+            for group_a,group_b in self.combinations_of_classes:
+
+                statistic,p_value = stats.ttest_ind(self.groups[group_a][richness], self.groups[group_b][richness], axis=0, equal_var=False)
+                
+                #print self.groups[group_a][richness], p_value
+                #print self.groups[group_b][richness], p_value
+
+                print ' - '.join(list((group_a,group_b))),
+                print ' P-PVALUE = ' + str(p_value),
+                print 'sign. TRUE' if (p_value < 0.05) else ''
+                
+            print '******************************************'
+
+
+
 if __name__ == '__main__':
 
-    bd = beta_diversity()
-     
+    bd = beta_diversity()     
     ## print bd.sample_and_coordinates

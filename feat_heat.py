@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -12,6 +13,7 @@ import subprocess as sp
 import pandas as pd
 import numpy as np
 import matplotlib.gridspec as gridspec
+matplotlib.rcParams['svg.fonttype'] = 'none'
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from scipy.stats import rankdata
 from scipy.spatial import distance
@@ -20,7 +22,6 @@ import subprocess
 
 
 ## python run.py crc --define study_condition:CRC:control --datasets FengQ_2015 ZellerG_2014 CM_rescignocrc YuJ_2015 CM_lilt VogtmannE_2016 HanniganGD_2017 -al rf -do heat_map -db metaphlan -g0 c:entropy -g1 nt:1000 -g2 nsl:5 -cm RdYlBu_r -nif 5
-
 ## python run.py crc --define study_condition:CRC:control --datasets FengQ_2015 ZellerG_2014 CM_rescignocrc YuJ_2015 CM_lilt VogtmannE_2016 HanniganGD_2017 -al rf -do heat_map -db pathways -g0 nt:1000 -g1 nsl:5 -g2 c:entropy -nif 5
 
 
@@ -45,9 +46,9 @@ class feature_heatmap(object):
         self.grid0 = grid0
         self.grid1 = grid1
         self.grid2 = grid2        
-        self.complete_ranking = '../ml/resultofcrossvalidation_ANYonANY_features:metaphlan_experimenttype:standard_rf_grid0:%s_grid1:%s_grid2:%s_FEATURE_RANKING.txt' \
+        self.complete_ranking = '../ml/resultofcrossvalidation_ANYonANY_features:metaphlan_experimenttype:study_condition:CRC:control_rf_grid0:%s_grid1:%s_grid2:%s_FEATURE_RANKING.txt' \
 		%(self.grid0, self.grid1, self.grid2)
-        print 'ths is your reference \n ', self.complete_ranking
+        #print 'ths is your reference \n ', self.complete_ranking
 
         self.cmap = cmap
         self.fig_fmt = fig_fmt
@@ -56,12 +57,12 @@ class feature_heatmap(object):
         self.tests = [':'.join(self.problem), ':'.join([self.problem[0],self.problem[1]]),':'.join([self.problem[0],self.problem[2]])]
         prob = self.tests[0].split(':')
         self.bnm = lambda n : n.split('/')[-1]
-        self.feat_files = dict([(ds, self.utils.get_transfer_resultnames([ds, ds], self.db, self.tests[0], self.algo, self.grid0, self.grid1, self.grid2)) for ds in self.datasets])
-        self.lodo_files = dict([(ds, self.utils.get_lodo_resultnames(ds, self.db, self.tests[0], self.algo, self.grid0, self.grid1, self.grid2)) for ds in self.datasets])
+        self.feat_files = dict([(ds, self.utils.get_transfer_resultnames([ds, ds], self.db, self.algo, self.tests[0], self.grid0, self.grid1, self.grid2)) for ds in self.datasets])
+        self.lodo_files = dict([(ds, self.utils.get_lodo_resultnames(ds, self.db, self.algo, self.tests[0], self.grid0, self.grid1, self.grid2)) for ds in self.datasets])
         self.metadata = self.read_metadata().T
         self.phylogenetic_mapper = dict()
         self.most_relevant_features = list()
-        self.rename_spp = lambda s_ : s_.replace('unclassified','spp.') if s_.endswith('unclassified') else s_
+        self.rename_spp = lambda s_ : s_.replace('unclassified','ssp.') if s_.endswith('unclassified') else s_
         self.frames = self.concat_frames(lodo) 	## all the features taken fromt eh random forest result
         self.signs_ = self.signs()       
         self.data = self.datamatrix()
@@ -108,7 +109,7 @@ class feature_heatmap(object):
         vmin_, vmax_ = self.mid_point, 1.
         norm_ = matplotlib.colors.Normalize(self.mid_point, 1)
         revnorm = matplotlib.colors.Normalize(1, self.mid_point)
-        fig = plt.figure(figsize=(9,14))
+        fig = plt.figure(figsize=(9,14))   ##(9,14))
         gs = gridspec.GridSpec(3,3, width_ratios=[10,1,1], height_ratios=[2,10,8])
 
         self.ax_hclus = plt.subplot(gs[0, 0])
@@ -129,7 +130,9 @@ class feature_heatmap(object):
         cbar_hot = matplotlib.colorbar.ColorbarBase(self.ax_cbar_hot, cmap='YlOrBr', norm=revnorm, extend='min')
         cbar_cold = matplotlib.colorbar.ColorbarBase(self.ax_cbar_cold, cmap='Blues_r', norm=norm_, extend='max', ticks=range(1,15,3))
 
-        hm_hot = sns.heatmap(self.data_hot, annot=True if self.annotate else False, ax=self.ax_hot, fmt='g'\
+        self.data_hot_annotable = self.data_hot.apply(lambda f : [(('%i' %ff) if ff < 1000 else '' ) for ff in f], axis=1).values    
+
+        hm_hot = sns.heatmap(self.data_hot, annot=self.data_hot_annotable if self.annotate else False, ax=self.ax_hot, fmt='s'\
                 , vmin=1, vmax=self.mid_point, cmap='YlOrBr_r', cbar=False, xticklabels=[], yticklabels=self.data_hot.index.tolist())
         hm_cold = sns.heatmap(self.data_cold, annot=True if self.annotate else False, ax=self.ax_cold, fmt='g'\
                 , vmin=1, vmax=self.mid_point, cmap='Blues_r', cbar=False, xticklabels=sorted_data, yticklabels=self.data_cold.index.tolist())
@@ -179,7 +182,7 @@ class feature_heatmap(object):
         plt.suptitle('Random Forest Feature Ranking')
 
         if self.db == 'metaphlan': 
-            plt.savefig('%s/FeatureHeatmap_%s.%s' %(self.save_fig, color, self.fig_fmt), dpi=600)
+            plt.savefig('%s/FeatureHeatmap_%s.%s' %(self.save_fig, color if not self.lodo else color+'_lodo', self.fig_fmt), dpi=600)
         elif self.db == 'pathways':
             plt.savefig('%s/PathwaysHeatmap_%s.%s' %(self.save_fig, color, self.fig_fmt), dpi=600)
 
@@ -189,7 +192,7 @@ class feature_heatmap(object):
         mean, scores, div = [], [], 0
         start = 2 if self.n_imp_feat not in self.getfeatnumber else self.getfeatnumber[self.n_imp_feat]
         for i,ds in enumerate(self.datasets):
-            score, coordinate, n = self.utils.lodo_(ds, self.db, self.tests[0], self.algo, self.grid, self.feat, start)
+            score, coordinate, n = self.utils.lodo_(ds, self.db, self.algo, self.tests[0], self.grid, self.feat, start)
             mean.append(score * n)
             div += n
             scores.append(score)
@@ -199,9 +202,9 @@ class feature_heatmap(object):
 
 
     def compute_CV_vector(self):
-        scores = [self.utils.transfer_([ds,ds], self.db, self.tests[0], self.algo, self.grid, self.feat\
+        scores = [self.utils.transfer_([ds,ds], self.db, self.algo, self.tests[0], self.grid, self.feat\
 		, 2 if self.n_imp_feat not in self.getfeatnumber else self.getfeatnumber[self.n_imp_feat])[0] for i,ds in enumerate(self.datasets)]
-        return scores + [self.utils.cross_validation_(self.db, self.tests[0], self.algo, self.grid, self.feat\
+        return scores + [self.utils.cross_validation_(self.db, self.algo, self.tests[0], self.grid, self.feat\
 		, 2 if self.n_imp_feat not in self.getfeatnumber else self.getfeatnumber[self.n_imp_feat])]
 
 
@@ -217,6 +220,7 @@ class feature_heatmap(object):
     def datamatrix(self):
         f = self.frames
         for piece in f: self.most_relevant_features += piece.index.tolist()[:self.n_imp_feat]
+
         self.most_relevant_features = list(set(self.most_relevant_features))
         min_ = np.max([np.max(piece) for piece in f])
         red = [piece.loc[self.most_relevant_features] for piece in f]
@@ -232,12 +236,15 @@ class feature_heatmap(object):
 		for ft in f.index.tolist() if self.signs_[ft] < 0.], key=lambda el : el[1], reverse=True)]
         self.pos = [el[0] for el in sorted([(ft, np.sum(f.loc[ft, :].tolist())) \
 		for ft in f.index.tolist() if self.signs_[ft] > 0.], key=lambda el : el[1], reverse=False)]
+
         self.mid_point = int(np.ceil(np.median(f.values) / 10.) * 10 )
+
         #f = f.loc[self.pos + self.neg]        
         if self.db == 'metaphlan': 
             self.pos = [self.rename_spp(i[3:]) for i in self.pos]
             self.neg = [self.rename_spp(i[3:]) for i in self.neg]
             f.set_index([[self.rename_spp(i[3:]) for i in f.index.tolist()]], inplace=True)
+
         f.columns = [(ds if not ds in self.utils.data_aliases else self.utils.data_aliases[ds]) for ds in f.columns.tolist()]
         return f
 
@@ -262,19 +269,25 @@ class feature_heatmap(object):
 
         if not filename: f = open(self.feat_files[ds]) if not lodo else open(self.lodo_files[ds])
         else: f = open(self.complete_ranking)
+
         while (not line.startswith('Feature')): line, skip = f.readline(), skip+1
         f.close()
+
         d = pd.read_csv(((self.feat_files[ds] if not lodo else self.lodo_files[ds]) if not filename else self.complete_ranking), sep='\t', header=None, index_col=0, skiprows=skip)[[1,2]]
         for f in d[1]: self.phylogenetic_mapper[f.split('|')[-1]] = f 
 
         d[1] = d[1].apply(lambda n : n.split('|')[-1])
         d[2] = d[2].apply(lambda n : float(n))
+
         if not filename: d.columns = ['feat', str(ds)]
         else: d.columns = ['feat', 'comparison']
+
         d.set_index('feat', inplace = True)        
 
+        ## RANKING
         if not filename: d[ds] = [i+1 for i,f in enumerate(d[ds].tolist())]
         else: d['comparison'] = [i+1 for i,f in enumerate(d['comparison'].tolist())]
+
         return d
 
 
@@ -300,4 +313,4 @@ class feature_heatmap(object):
 
 
 if __name__=='__main__':
-    print 
+    print 'aruuh! aruuuh!'

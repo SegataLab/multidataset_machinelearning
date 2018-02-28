@@ -115,6 +115,7 @@ class metadataset:
              , the added field will be in third position (after dataset_name sampleID) under header "ext_characterization"')
         
         add( '-sc', '--select_columns', type=str, default=[], nargs='+')
+        add( '-scff', '--select_columns_from_file', type=str, default=None)
         # - FURTHER METAPHLAN SPECIFICS
         add( '-mx', '--mixed_taxa', action='store_true')
         add( '-ys', '--yes_strain', action='store_true')
@@ -219,7 +220,7 @@ class metadataset:
             self.profile_pwys.add(self.args['base_path']+dataset_name+'/'+self.args['pwyrelab_folder']+sample+'/'+sample+self.args['pwy_title']+'.txt')
 
         if self.args['genefam'] and (not sample in self.args['exclude_samples']): 
-            self.profile_genes.add(self.args['base_path']+dataset_name+'/'+self.args['genefam_folder']+sample+'/'+ sample+self.args['genefam_title']+'.txt')
+            self.profile_genes.add(self.args['base_path']+dataset_name+'/'+self.args['genefam_folder']+sample+'/'+ sample+self.args['genefam_title']+'.tsv')
 
         if self.args['mirna'] and (not sample in self.args['exclude_samples']):
             self.profile_mirna.add(self.args['base_path']+dataset_name+'/'+self.args['mirna_folder']+sample+'/'+sample+self.args['mirna_title']+'.tsv')
@@ -493,18 +494,20 @@ class metadataset:
 
         if bool(self.args['feature_selection']):
             with open(self.args['feature_selection']) as fs:
-                f_imp = True if len(fs.readline().rstrip().split())==2 else False 
-                line = True
-                features = [line.rstrip() for line in fs.readlines()] if not f_imp else dict([tuple(line.rstrip().split()[:2]) for line in fs.readlines()])	
-                if isinstance(features, list):
-                    features,data,self.feat = [o for o in (set(features) & set(self.feat))], data[self.metadata+features], features
-                elif isinstance(features, dict): 
-                    for k in features: 
-                        if k not in (set(features) & set(feat)): del features[k]
-                    data = data[self.metadata + [k for k in features.keys()]]
-                    for k in features.keys(): data.loc[:,k].apply(lambda a : a*features[k]*10 )##, axis=1)
-                    feat = [k for k in features.keys()]
-
+                data = data[self.metadata + [feat.rstrip() for feat in fs.readlines()]]
+                
+                #line = fs.readline().rstrip().split()
+                #f_imp = True if len(line)==2 else False 
+                #line = True
+                #features = [line.rstrip() for line in fs.readlines()] if not f_imp else dict([tuple(line.rstrip().split()[:2]) for line in fs.readlines()])	
+                #if isinstance(features, list):
+                #    features,data,self.feat = [o for o in (set(features) & set(self.feat))], data[self.metadata+features], features
+                #elif isinstance(features, dict): 
+                #    for k in features: 
+                #        if k not in (set(features) & set(feat)): del features[k]
+                #    data = data[self.metadata + [k for k in features.keys()]]
+                #    for k in features.keys(): data.loc[:,k].apply(lambda a : a*features[k]*10 )##, axis=1)
+                #    feat = [k for k in features.keys()]
         #print self.feat[-1], ' eccotela.. riga 503'
 
 
@@ -544,6 +547,11 @@ class metadataset:
 
             if self.args['select_columns']:
                 data = data[self.args['select_columns']]
+
+            elif self.args['select_columns_from_file']:
+
+                with open(self.args['select_columns_from_file']) as fts:
+                    data = data[[feat.rstrip() for feat in fts.readlines()]]
 
             if self.args['feat_only']:
                 data = data[['sampleID'] + self.feat]
