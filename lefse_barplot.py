@@ -24,6 +24,10 @@ class effect_size_barplot(object):
         add('-wh', '--where', type=str)
         add('--feature_names', type=str, default='Species')
         add('--color_code', type=str,  choices=['periimplantitis', 'crc'])
+        add('--save_features', type=str, default=None)
+        add('--basic_fields', type=str, default=['sampleID', 'study_condition'], nargs='+')
+
+        add('--title', default='', type=str)
         return vars(pa.parse_args())
 
 
@@ -31,6 +35,12 @@ class effect_size_barplot(object):
         self.args = self.read_params(args)
         self.fmt = self.args['fig_fmt']
         self.color_code = project_color_code(self.args['color_code']).color_code
+
+
+    def save_feats(self, fname, feat_list):
+        with open(fname, 'w') as out:
+            [out.write(basic + '\n') for basic in self.args['basic_fields']] 
+            [out.write((f if self.args['feature_names']!='Species' else 's__'+f)+'\n') for f in feat_list]
 
 
     def set_plot(self, file_name):
@@ -44,12 +54,13 @@ class effect_size_barplot(object):
                                      , 'p':    [e.pv for e in lefse.data]\
                                      , 'C':   [e.cl for e in lefse.data]\
                                      , self.args['feature_names']: [(name[:-13]+'_spp' if name.endswith('_unclassified') else name).replace('_',' ')\
-				            for name in [(e.name if e.pv >= 0.05 else e.name + ' *') for e in lefse.data]]\
+				     for name in [(e.name if e.pv >= 0.05 else e.name + ' *') for e in lefse.data]]\
                                      , 'colors': [self.color_code[e.cl] for e in lefse.data]\
                                       })
 
         data_to_plot.set_index('feat', inplace=True)
         data_to_plot = data_to_plot.loc[lefse.feats]
+        if bool(self.args['save_features']): self.save_feats(self.args['save_features'], lefse.feats)
         self.plot(data_to_plot, classes)
 
         
@@ -63,7 +74,7 @@ class effect_size_barplot(object):
              lab.set_style('italic')
              lab.set_size(8)
          plt.subplots_adjust(right=.6, bottom=0.2)
-         plt.savefig(self.args['where'] + ('' if self.args['where'].endswith('/') else '/') + '_'.join(classes) + '_effect_size.' + self.fmt, dpi=400)
+         plt.savefig(self.args['where'] + ('' if self.args['where'].endswith('/') else '/') + '_'.join(classes) + ('' if not self.args['title'] else '_'+self.args['title']) + '_effect_size.' + self.fmt, dpi=400)
         
 
 if __name__ == '__main__':
