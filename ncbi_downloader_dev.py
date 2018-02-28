@@ -6,7 +6,7 @@
 # *                 USAGE: python ncbi_downloader.py datasetname bprj_code                             *                               
 # *                 other usefull modes: only_download; allready_downloaded (specular, it prevents the *                                                        
 # *                 creation of new directories if all the necessary have been selcetd from a previous *
-# *                 download.                                                                          *
+# *                 download.                                                                     #    *
 # ******************************************************************************************************
 
 __author__ = "Francesco Beghini, Paolo Manghi (francesco.beghini@studenti.unitn.it, paolo.manghi@unitn.it)"
@@ -441,7 +441,6 @@ class Download(object):
                 print 'Don ask me why, not this one, but the other 6000.'
                 return
 
-        
         with mp.ProcessingPool(self.ncores) as pp:
             pp.map(getfree, all_the_samples)
 
