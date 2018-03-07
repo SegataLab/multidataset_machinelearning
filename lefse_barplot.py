@@ -28,6 +28,7 @@ class effect_size_barplot(object):
         add('--basic_fields', type=str, default=['sampleID', 'study_condition'], nargs='+')
 
         add('--title', default='', type=str)
+        add('-txt', '--text_on', default=None, type=str, help='Text file with the statistical support.')
         return vars(pa.parse_args())
 
 
@@ -43,24 +44,37 @@ class effect_size_barplot(object):
             [out.write((f if self.args['feature_names']!='Species' else 's__'+f)+'\n') for f in feat_list]
 
 
+    def write_statistical_support(self, texton, data):
+        data = data[[self.args['feature_names'], 'C', 'p']]
+        data.columns = [[self.args['feature_names'], 'class', 'Mann-Withney-Significance']]
+        data.to_csv(texton, sep='\t', header=True, index=False)
+            
+
     def set_plot(self, file_name):
         lefse = lefse_reader(file_name)
         lefse.get()
         lefse.select_highest(self.args['number_imp_feat'])
         classes = lefse.classes_
         data_to_plot = pd.DataFrame(\
+
                                       {'Effect Size':  [e.esize for e in lefse.data]\
                                      , 'feat':  [e.name for e in lefse.data]\
                                      , 'p':    [e.pv for e in lefse.data]\
                                      , 'C':   [e.cl for e in lefse.data]\
                                      , self.args['feature_names']: [(name[:-13]+'_spp' if name.endswith('_unclassified') else name).replace('_',' ')\
-				     for name in [(e.name if e.pv >= 0.05 else e.name + ' *') for e in lefse.data]]\
+				        for name in [(e.name if e.pv >= 0.05 else e.name + ' *') for e in lefse.data]]\
                                      , 'colors': [self.color_code[e.cl] for e in lefse.data]\
+
                                       })
 
         data_to_plot.set_index('feat', inplace=True)
         data_to_plot = data_to_plot.loc[lefse.feats]
-        if bool(self.args['save_features']): self.save_feats(self.args['save_features'], lefse.feats)
+
+        if bool(self.args['save_features']):
+            self.save_feats(self.args['save_features'], lefse.feats)
+        if bool(self.args['text_on']):
+            self.write_statistical_support(self.args['text_on'], data_to_plot)
+
         self.plot(data_to_plot, classes)
 
         
@@ -74,7 +88,8 @@ class effect_size_barplot(object):
              lab.set_style('italic')
              lab.set_size(8)
          plt.subplots_adjust(right=.6, bottom=0.2)
-         plt.savefig(self.args['where'] + ('' if self.args['where'].endswith('/') else '/') + '_'.join(classes) + ('' if not self.args['title'] else '_'+self.args['title']) + '_effect_size.' + self.fmt, dpi=400)
+         plt.savefig(self.args['where'] + ('' if self.args['where'].endswith('/') else '/') + '_'.join(classes) \
+             + ('' if not self.args['title'] else '_'+self.args['title']) + '_effect_size.' + self.fmt, dpi=400)
         
 
 if __name__ == '__main__':
