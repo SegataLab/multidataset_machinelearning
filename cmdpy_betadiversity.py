@@ -28,6 +28,12 @@ class beta_diversity(object):
         else: self.args = params
 
         self.stdin = pd.read_csv(self.args['stdin'], sep='\t', header=None, index_col=0)
+
+        if self.args['gradient_on']: 
+            self.grads = dict([(s, g) for s,g in zip(\
+                self.stdin.loc[self.args['sample_id'],:].tolist()\
+              , self.stdin.loc[self.args['gradient_on'],:].astype('float').tolist())])
+        else: self.grads = None
         self.subjects = dict([(s, sub) for s,sub in zip(self.stdin.loc[self.args['sample_id'],:].tolist(), self.stdin.loc['subjectID', :].tolist())])
 
         if self.args['alpha_diversity']:
@@ -124,6 +130,11 @@ class beta_diversity(object):
         arg(	'--dot_size', type=float, default=10)
         arg(	'-txt', '--text_on', type=str, default=None)
 
+        arg(    '--bg_white', action='store_true')
+
+        colors = ['RdYlBu', 'plasma', 'inferno', 'winter', 'copper']
+        arg(	'-cm', '--cmap', default='copper_r', choices=colors+[c+'_r' for c in colors])
+        arg(	'-go', '--gradient_on', default=None, help='must be a column in the data')
         arg(	'--intra_individual', action='store_true')
 
         return vars(p.parse_args())
@@ -236,25 +247,66 @@ class beta_diversity(object):
 
     def scatter_plot(self, ax=None):
 
-        sns.set_style('darkgrid')
+        sns.set_style('darkgrid')  #RdYlBu_r
+        cmap = vars(matplotlib.cm)[self.args['cmap']] if self.grads else None
         fig = False
+
         if not bool(ax):
             fig, ax = plt.subplots(figsize=(8,6))
+
             if self.args['algorithm'] == 'mds':
                 ax.set_xlim(-0.8, 0.8)
                 ax.set_ylim(-0.8, 0.8)
                 ax.xaxis.set_ticks(np.arange(-0.6, 0.8, 0.2))
                 ax.yaxis.set_ticks(np.arange(-0.6, 0.8, 0.2))
+
         for c in self.sample_in_class.keys():
+
             present = [s for s in self.sample_in_class[c] if s in set(self.sample_and_coordinates.index.tolist())]
-            present_sample_frame = self.sample_and_coordinates.loc[present]
-            scatterp = sns.regplot(x='x1', y='x2', data=present_sample_frame, ax=ax, scatter=True, fit_reg=False, scatter_kws={'s': self.args['dot_size']}\
-		, label=self.atts_of_sample[present[0]][0], marker=self.atts_of_sample[present[0]][2], color=self.atts_of_sample[present[0]][1])
+
+            if not self.grads:            
+                present_sample_frame = self.sample_and_coordinates.loc[present]
+
+            #print ' il colore sarebbe: ', (self.atts_of_sample[present[0]][1] if not self.grads else [cmap(self.grads[p]) for p in present])
+            #if not self.grads:
+                scatterp = sns.regplot(x='x1', y='x2', data=present_sample_frame, ax=ax, scatter=True, fit_reg=False\
+                    , scatter_kws={'s': self.args['dot_size']} \
+                    , label=self.atts_of_sample[present[0]][0] \
+                    , marker=self.atts_of_sample[present[0]][2]\
+                    , color=self.atts_of_sample[present[0]][1]) ### if not self.grads else [cmap(self.grads[c]) for c in present]))
+            else:
+                
+               # for p in present:
+                #    datum = pd.DataFrame(data=self.sample_and_coordinates.loc[p].values.reshape([1,2]), columns=['x1','x2'], index=[p])
+
+                    #datum.index = [sample]
+                #    print pd.DataFrame(present_sample_frame.loc[sample, :])
+                #    print self.grads[sample]
+                #    print cmap(self.grads[sample])
+
+                #    print datum
+                #    print datum.index, datum.values
+                #exit(1) 
+
+                print type(cmap), cmap
+
+                scatterp = [sns.regplot(x='x1', y='x2', ax=ax, scatter=True, fit_reg=False\
+                    , data=pd.DataFrame(data=self.sample_and_coordinates.loc[p].values.reshape([1,2])\
+                    , columns=['x1','x2'], index=[p]), scatter_kws={'s': self.args['dot_size']} \
+                    , label='', marker='o', color=cmap(self.grads[p])) for p in present]
+
+                #self.norm_ = matplotlib.colors.Normalize(vmin=.5,vmax=1.)
+                #self.cbar = matplotlib.colorbar.ColorbarBase(self.ax_cbar, cmap=self.cmap, norm=self.norm_, extend='min', filled=True, drawedges=True)
+                #self.cbar.set_ticks(list(np.arange(0.5,1.0,0.1))+[1])
+                #self.cbar.set_ticklabels(list(map(str,np.arange(0.5,1.0,.1)))+[1.0])
+
+
             if self.args['annot']:
                 for sample,x,y in zip(present_sample_frame.index.tolist(), present_sample_frame['x1'].tolist(), present_sample_frame['x2'].tolist()):	
-                    ax.annotate(sample, (float(x), float(y)), size=3)            
+                    ax.annotate(sample, (float(x) - 0.02, float(y)), size=3)            
+
         if bool(fig):
-            plt.legend(bbox_to_anchor=(0., 1.02, 1., 1.102), loc=3, ncol=3, mode="expand", borderaxespad=1., fontsize=8)
+            if not self.grads: plt.legend(bbox_to_anchor=(0., 1.02, 1., 1.102), loc=3, ncol=3, mode="expand", borderaxespad=1., fontsize=8)
             plt.subplots_adjust(top=0.8)
             plt.suptitle(self.args['title'], fontsize=8)
             plt.savefig(self.args['stdout']+('_ANNOT' if self.args['annot'] else '')+'.'+self.args['format'], dpi=400) 
@@ -279,7 +331,7 @@ class beta_diversity(object):
 
     def box_plot(self):
        
-        sns.set_style('darkgrid')        
+        sns.set_style('darkgrid' if not self.args['bg_white'] else 'white')       
         #fig, ax = plt.subplots(figsize=(8,6)) 
         #print self.dist_mat, type(self.dist_mat)
 
