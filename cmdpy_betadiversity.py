@@ -12,6 +12,7 @@ from matplotlib import pyplot as plt
 from sklearn import decomposition
 from sklearn import preprocessing as prep
 from sklearn import manifold
+import matplotlib.gridspec as gridspec
 from sklearn.metrics import pairwise_distances
 import seaborn as sns
 import pandas as pd
@@ -132,8 +133,9 @@ class beta_diversity(object):
 
         arg(    '--bg_white', action='store_true')
 
-        colors = ['RdYlBu', 'plasma', 'inferno', 'winter', 'copper']
-        arg(	'-cm', '--cmap', default='copper_r', choices=colors+[c+'_r' for c in colors])
+        colors = ['RdYlBu', 'plasma', 'inferno', 'winter', 'copper', 'viridis']
+        arg(	'-cm', '--cmap', default='viridis', choices=colors+[c+'_r' for c in colors])
+        arg(	'-cn', '--cbar_title', default='')
         arg(	'-go', '--gradient_on', default=None, help='must be a column in the data')
         arg(	'--intra_individual', action='store_true')
 
@@ -247,12 +249,18 @@ class beta_diversity(object):
 
     def scatter_plot(self, ax=None):
 
-        sns.set_style('darkgrid')  #RdYlBu_r
+        sns.set_style('darkgrid' if not self.args['bg_white'] else 'white')
         cmap = vars(matplotlib.cm)[self.args['cmap']] if self.grads else None
         fig = False
 
         if not bool(ax):
-            fig, ax = plt.subplots(figsize=(8,6))
+            if not self.grads:
+                fig, ax = plt.subplots(figsize=(8,6))
+            else:
+                fig = plt.figure(figsize=(9,6)) 
+                gs = gridspec.GridSpec(1,2, width_ratios=[24,1])
+                ax = plt.subplot(gs[0,0])
+                ax_cbar = plt.subplot(gs[0,1])
 
             if self.args['algorithm'] == 'mds':
                 ax.set_xlim(-0.8, 0.8)
@@ -267,51 +275,47 @@ class beta_diversity(object):
             if not self.grads:            
                 present_sample_frame = self.sample_and_coordinates.loc[present]
 
-            #print ' il colore sarebbe: ', (self.atts_of_sample[present[0]][1] if not self.grads else [cmap(self.grads[p]) for p in present])
-            #if not self.grads:
                 scatterp = sns.regplot(x='x1', y='x2', data=present_sample_frame, ax=ax, scatter=True, fit_reg=False\
-                    , scatter_kws={'s': self.args['dot_size']} \
-                    , label=self.atts_of_sample[present[0]][0] \
-                    , marker=self.atts_of_sample[present[0]][2]\
-                    , color=self.atts_of_sample[present[0]][1]) ### if not self.grads else [cmap(self.grads[c]) for c in present]))
+                    , scatter_kws={'s': self.args['dot_size']}  \
+                    , label=self.atts_of_sample[present[0]][0]  \
+                    , marker=self.atts_of_sample[present[0]][2] \
+                    , color=self.atts_of_sample[present[0]][1])
             else:
                 
-               # for p in present:
-                #    datum = pd.DataFrame(data=self.sample_and_coordinates.loc[p].values.reshape([1,2]), columns=['x1','x2'], index=[p])
-
-                    #datum.index = [sample]
-                #    print pd.DataFrame(present_sample_frame.loc[sample, :])
-                #    print self.grads[sample]
-                #    print cmap(self.grads[sample])
-
-                #    print datum
-                #    print datum.index, datum.values
-                #exit(1) 
-
-                print type(cmap), cmap
-
                 scatterp = [sns.regplot(x='x1', y='x2', ax=ax, scatter=True, fit_reg=False\
                     , data=pd.DataFrame(data=self.sample_and_coordinates.loc[p].values.reshape([1,2])\
                     , columns=['x1','x2'], index=[p]), scatter_kws={'s': self.args['dot_size']} \
                     , label='', marker='o', color=cmap(self.grads[p])) for p in present]
 
-                #self.norm_ = matplotlib.colors.Normalize(vmin=.5,vmax=1.)
-                #self.cbar = matplotlib.colorbar.ColorbarBase(self.ax_cbar, cmap=self.cmap, norm=self.norm_, extend='min', filled=True, drawedges=True)
-                #self.cbar.set_ticks(list(np.arange(0.5,1.0,0.1))+[1])
-                #self.cbar.set_ticklabels(list(map(str,np.arange(0.5,1.0,.1)))+[1.0])
+                sps = [spine.set_linewidth(0.5) for spine in ax.spines.itervalues()]
+                norm = matplotlib.colors.Normalize(vmin=0.,vmax=1.)
+                cbar = matplotlib.colorbar.ColorbarBase(\
+                    ax_cbar, cmap=self.args['cmap'], norm=norm, extend='neither'\
+                  , filled=True, drawedges=False, orientation='vertical')
 
+                cbar.set_ticks([0.0, 2.5, 5.0, 7.5, 1.0])
+                cbar.set_ticklabels(['0.0', '2.5', '5.0', '7.5', '1.0'])
+                ax_cbar.yaxis.set_ticks_position('left')
+
+                cbar.outline.set_linewidth(.5)
+
+                ax_cbar.set_ylabel(self.args['cbar_title'] if self.args['cbar_title'] else self.args['gradient_on'], size=10)
+                ax_cbar.tick_params(labelsize=10)
 
             if self.args['annot']:
                 for sample,x,y in zip(present_sample_frame.index.tolist(), present_sample_frame['x1'].tolist(), present_sample_frame['x2'].tolist()):	
                     ax.annotate(sample, (float(x) - 0.02, float(y)), size=3)            
 
         if bool(fig):
+
             if not self.grads: plt.legend(bbox_to_anchor=(0., 1.02, 1., 1.102), loc=3, ncol=3, mode="expand", borderaxespad=1., fontsize=8)
             plt.subplots_adjust(top=0.8)
             plt.suptitle(self.args['title'], fontsize=8)
             plt.savefig(self.args['stdout']+('_ANNOT' if self.args['annot'] else '')+'.'+self.args['format'], dpi=400) 
+
             return 'Got.'
         else:
+
             return scatterp
 
 
