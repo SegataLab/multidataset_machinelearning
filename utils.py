@@ -144,7 +144,11 @@ class project_color_code(object):
 
     def __init__(self, project_name):
 
-        if project_name == 'periimplantitis': self.color_code = dict([(cat,cl) for cat,cl in zip(['healthy', 'peri-implantitis', 'mucositis'], ['seagreen', 'dodgerblue', 'orangered'])])
+        if project_name == 'periimplantitis': 
+            self.color_code = dict([(cat,cl) for cat,cl in zip(\
+                ['healthy', 'peri-implantitis', 'mucositis']\
+              , ['forestgreen', 'deepskyblue', 'orangered']\
+               )])
 
 
 

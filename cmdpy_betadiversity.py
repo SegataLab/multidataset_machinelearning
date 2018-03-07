@@ -28,6 +28,7 @@ class beta_diversity(object):
         else: self.args = params
 
         self.stdin = pd.read_csv(self.args['stdin'], sep='\t', header=None, index_col=0)
+        self.subjects = dict([(s, sub) for s,sub in zip(self.stdin.loc[self.args['sample_id'],:].tolist(), self.stdin.loc['subjectID', :].tolist())])
 
         if self.args['alpha_diversity']:
             f = self.edit_(self.stdin, self.args['sample_id'], self.args['feature_identifier'])
@@ -43,13 +44,27 @@ class beta_diversity(object):
             self.coordinates, self.metadata, self.explained_var = self.beta_div()
             self.sample_in_class, self.atts_of_sample, self.sample_to_class = self.guess_classes(self.metadata)
 
-            self.legend = [ll.split() for ll in list(set([' '.join(l) for l in self.atts_of_sample.values()]))] 
-            self.legend_dict = dict([(t[0],t[1:]) for t in self.legend])
+            if not self.args['intra_individual']:
+                self.legend = sorted([ll.split() for ll in list(set([' '.join(l) for l in self.atts_of_sample.values()]))], key = lambda w : w[0])
+                self.couples_by_class = dict([(k, list(map(list, itertools.combinations(self.sample_in_class[k], 2)))) for k in self.sample_in_class])  
+            else:
+                self.legend = sorted([ll.split() for ll in list(set([' '.join(l) for l in self.atts_of_sample.values()]))], key = lambda w : w[0])
+                self.couples_by_class = dict([(k, [ss for ss in list(map(list, itertools.combinations(self.sample_in_class[k], 2))) \
+                  if self.subjects[ss[0]]==self.subjects[ss[1]]]) for k in self.sample_in_class]) ## self.stdin.loc[self.args['sample_id'],:].tolist()])
+                #self.legend = sorted([ll.split() for ll in list(set([' '.join(l) for l in self.atts_of_sample.values()])) if ll.split()[0] in self.couples_by_class], key = lambda w : w[0])
 
-            self.couples_by_class = dict([(k, list(map(list, itertools.combinations(self.sample_in_class[k], 2)))  \
-                if not self.args['intra_individual'] else \
-                [ss for ss in list(map(list, itertools.combinations(self.sample_in_class[k], 2))) if ss[0]==ss[1]] \
-                ) for k in self.sample_in_class.keys()])
+                #if not self.args['intra_individual'] else \
+                #[ss for ss in list(map(list, itertools.combinations(self.sample_in_class[k], 2))) if self.subjects[ss[0]]==self.subjects[ss[1]]] \
+                #) for k in self.sample_in_class.keys()]) ## .items() if bool(len(vl))])
+
+            #self.legend = sorted([ll.split() for ll in list(set([' '.join(l) for l in self.atts_of_sample.values()]))], key = lambda w : w[0])
+            #self.legend_dict = dict([(t[0],t[1:]) for t in self.legend])
+
+            # self.legend_dict = dict([(t[0],t[1:]) for t in self.legend])
+
+            #print self.legend
+            #print self.sample_in_class
+            #print self.couples_by_class, ' guarda qui'
 
             #self.classes_by_couple = dict([(v,k) for k,v in self.couples_by_class.items()])
 
@@ -119,6 +134,7 @@ class beta_diversity(object):
         print ' sample_in_class: a dict with classes as keys and samples for any keys listed as values.' 
         print ' atts_of_sample: a dict with samples as keys and [class, color, shape] as values.'
         print ' sample_to_class: a dict with samples as keys and class for each as value.'
+        print ' legend: ', self.legend
 
 
 
@@ -168,6 +184,9 @@ class beta_diversity(object):
         sample_to_attributes = dict([(s, [a[0] for a in mdf.loc[[self.args['classes_id'],'color','shape'], mdf.loc[self.args['sample_id']].isin([s])].values.tolist()]) \
 	    for s in mdf.loc[self.args['sample_id'], :].tolist()])
         sample_to_class = dict([(s,c) for s,c in zip(mdf.loc[self.args['sample_id'], :].tolist(), mdf.loc[self.args['classes_id'], :].tolist())])
+
+        ###for c in class_to_samples: print c, class_to_samples[c], ' UUUUUUU' 
+
         return class_to_samples, sample_to_attributes, sample_to_class            
 
 
@@ -238,7 +257,7 @@ class beta_diversity(object):
             plt.legend(bbox_to_anchor=(0., 1.02, 1., 1.102), loc=3, ncol=3, mode="expand", borderaxespad=1., fontsize=8)
             plt.subplots_adjust(top=0.8)
             plt.suptitle(self.args['title'], fontsize=8)
-            plt.savefig(self.args['stdout']+'.'+self.args['format'], dpi=400) 
+            plt.savefig(self.args['stdout']+('_ANNOT' if self.args['annot'] else '')+'.'+self.args['format'], dpi=400) 
             return 'Got.'
         else:
             return scatterp
@@ -262,24 +281,54 @@ class beta_diversity(object):
        
         sns.set_style('darkgrid')        
         #fig, ax = plt.subplots(figsize=(8,6)) 
+        #print self.dist_mat, type(self.dist_mat)
+
+        for c in self.couples_by_class: self.couples_by_class[c], '   copro di mille balene'
 
         class box_plot_object(object):
             def __init__(self, class_, color_, cat_var_, couple_of_samples, dist_mat):
                 self.class_ = class_
                 self.color_ = color_
                 self.cat_var_ = cat_var_
-                self.beta_diversity = dist_mat.get_value(couple_of_samples[0], couple_of_samples[1])
-  
-        data = pd.DataFrame([[ob.class_, ob.color_, ob.cat_var_, ob.beta_diversity] \
-                for ob in [box_plot_object(cl,co,ct,cp,self.dist_mat) for cl,co,ct,cp in zip(\
-		  list(itertools.chain.from_iterable([[c[0] for i in range(len(self.couples_by_class[c[0]]))] for c in self.legend]))\
-		, list(itertools.chain.from_iterable([[c[1] for i in range(len(self.couples_by_class[c[0]]))] for c in self.legend]))\
-		, list(itertools.chain.from_iterable([[c[2] for i in range(len(self.couples_by_class[c[0]]))] for c in self.legend]))\
-		, list(itertools.chain.from_iterable([[couple for couple in self.couples_by_class[c[0]]] for c in self.legend])))]]\
-                ,   columns=['', 'color', 'group_by', 'Beta-Diversity'])  ## ]))
 
-        ax = sns.swarmplot(data=data, x='', y='Beta-Diversity', hue=None if len(list(set(data['group_by'].tolist())))==1 else 'group_by', dodge=True, s=4)
-        ax = sns.boxplot(data=data, x='', y='Beta-Diversity', hue=None if len(list(set(data['group_by'].tolist())))==1 else 'group_by')
+                #print ' - '.join(couple_of_samples)
+                #print dist_mat.loc[couple_of_samples[0], :]
+                #print type(dist_mat.loc[couple_of_samples[0], :])
+                #print dist_mat.loc[couple_of_samples[0], :].shape               
+                #exit(1)
+                #try:
+                self.beta_diversity = dist_mat.get_value(couple_of_samples[0], couple_of_samples[1])
+                #except AttributeError: 
+                #    self.beta_diversity = 'NaN'  
+
+
+        #f_leg = self.legend
+        #for e,c in enumerate(self.legend):  
+        #    if len(self.couples_by_class[c[0]]) == 0: 
+        #        del f_leg[e]
+        #        del self.couples_by_class[c[0]]
+        #self.legend = f_leg
+
+        ##condition = lambda c : True if (len(self.couples[))
+
+        data = pd.DataFrame(\
+                [[ob.class_, ob.color_, ob.cat_var_, ob.beta_diversity]   \
+                  for ob in [\
+                  box_plot_object(cl,co,ct,cp,self.dist_mat) for cl,co,ct,cp in zip(\
+                    list(itertools.chain.from_iterable(\
+                       [[c[0] for i in range(len(self.couples_by_class[c[0]]))] for c in self.legend if len(self.couples_by_class[c[0]]) ]))\
+                  , list(itertools.chain.from_iterable(\
+                       [[c[1] for i in range(len(self.couples_by_class[c[0]]))] for c in self.legend if len(self.couples_by_class[c[0]]) ]))\
+                  , list(itertools.chain.from_iterable(\
+                       [[c[2] for i in range(len(self.couples_by_class[c[0]]))] for c in self.legend if len(self.couples_by_class[c[0]]) ]))\
+                  , list(itertools.chain.from_iterable(\
+                       [[couple for couple in self.couples_by_class[c[0]]] for c in self.legend if len(self.couples_by_class[c[0]])]))\
+                  ) ]], columns=['', 'color', 'group_by', 'Beta-Diversity']) 
+
+        ##print data
+
+        ax = sns.swarmplot(data=data, x='', y='Beta-Diversity', hue=None if len(list(set(data['group_by'].tolist())))==1 else 'group_by', dodge=True, s=4, color='black', alpha=0.7)
+        ax = sns.boxplot(data=data, x='', y='Beta-Diversity', hue=None if len(list(set(data['group_by'].tolist())))==1 else 'group_by', palette=dict([(c[0], c[1]) for c in self.legend]))
 
         data.columns = ['class', 'color', 'group_by', 'Beta-Diversity']
         self.groups = dict([(cl, data.loc[data['class'].isin([cl]), 'Beta-Diversity'].tolist()) for cl in list(set(data['class'].tolist()))])
@@ -302,8 +351,9 @@ class beta_diversity(object):
         self.simple_richness = dict([(samples[i], np.count_nonzero(f.loc[i].astype(float).tolist())) for i in f.index.tolist()])
         self.log_richness = dict([(k,np.log(v)) for k,v in self.simple_richness.items()])
         self.shannon_richness = dict([(samples[i], -np.sum(np.array(f.loc[i].astype(float).tolist(), dtype=np.float64) * 0.01\
-        * np.nan_to_num(np.log(np.array(f.loc[i].astype(float).tolist(), dtype=np.float64) * 0.01)))) for i in f.index.tolist()])
-        self.ginisimpson_richness = dict([(samples[i], 1.-np.sum(np.power(np.array(f.loc[i].astype(float).tolist(), dtype=np.float64) * 0.01, 2))) for i in f.index.tolist()])
+          * np.nan_to_num(np.log(np.array(f.loc[i].astype(float).tolist(), dtype=np.float64) * 0.01)))) for i in f.index.tolist()])
+        self.ginisimpson_richness = dict([(samples[i], 1.-np.sum(np.power(np.array(f.loc[i].astype(float).tolist(), dtype=np.float64) * 0.01\
+	  , 2))) for i in f.index.tolist()])
 					
         data = pd.DataFrame( [ (self.simple_richness[sam]\
                    , self.log_richness[sam]\
@@ -317,8 +367,10 @@ class beta_diversity(object):
             data_ = data[[type_of_richness, 'group_by', '']]
          
             fig = plt.figure(figsize=(8,6))
-            ax = sns.swarmplot(data=data_, x='', y=type_of_richness, hue=None if len(list(set(data['group_by'].tolist())))==1 else 'group_by', dodge=True, s=4)
-            ax = sns.boxplot(data=data_, x='', y=type_of_richness, hue=None if len(list(set(data['group_by'].tolist())))==1 else 'group_by')
+            ax = sns.swarmplot(data=data_, x='', y=type_of_richness, hue=None if len(list(set(data['group_by'].tolist())))==1 else 'group_by'\
+	     , dodge=True, s=4, color='black', alpha=0.7)
+            ax = sns.boxplot(data=data_, x='', y=type_of_richness, hue=None if len(list(set(data['group_by'].tolist())))==1 else 'group_by'\
+	     , palette=dict([(c[0], c[1]) for c in self.legend]))
                             
             plt.setp(ax.get_xticklabels(), rotation=38, ha='right')
             plt.subplots_adjust(bottom=.3)

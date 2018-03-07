@@ -115,7 +115,7 @@ def pathways(sample,name):
 		SUM += abundance
     s.write(ss[0])
     for a in range(1, len(ss)):
-        s.write('\t'.join([ss[a][0], str(ss[a][1]/SUM)])+'\n')
+        s.write('\t'.join([ss[a][0], str(ss[a][1]/float(SUM))])+'\n')
     s.close()
 
 def genefamilies(sample, name):
@@ -198,10 +198,10 @@ if __name__=='__main__':
         except:
             print 'dir ' + par['destination_path'] + par['dataset'] + '/' + par['genefamilies_f'] + '/ present.'
 
-        #try:
-        #    os.mkdir(par['destination_path']+par['dataset']+'/'+par['pathways_f']
-        #except:
-        #    print 'dir ' + par['destination_path']+par['dataset']+'/'+par['pathways_f'] + '/ present.'
+        try:
+            os.mkdir(par['destination_path'] + par['dataset'] + '/' + par['pathways_f'])
+        except:
+            print 'dir ' + par['destination_path']+par['dataset']+'/'+par['pathways_f'] + '/ present.'
 
         #try:
         #    os.mkdir(par['destination_path']+par['dataset']+'/'+par['markerpres_f'])
@@ -215,7 +215,7 @@ if __name__=='__main__':
        
 
         gn_samples = par['origin_path'] + par['dataset'] + '/' + par['gene_fish'] + '/*.tsv'
-        #pwy_samples = par['origin_path'] +par['dataset']+'/'+ par['pwy_fish'] + '/*.tsv'
+        pwy_samples = par['origin_path'] +par['dataset']+'/'+ par['pwy_fish'] + '/*.tsv'
         #mar_samples = par['origin_path'] +par['dataset']+'/'+ par['markerpres_fish'] + '/*.tsv'
 
         basename = lambda s : s.split('/')[-1]
@@ -234,11 +234,12 @@ if __name__=='__main__':
         """
 
         ##### NORMAL
-        #for t in glob.glob(pwy_samples):
-        #    try:
-        #        os.mkdir(par['destination_path']+par['dataset']+'/'+par['pathways_f']+'/'+basename(t)[:-4])        
-        #    except: print 'dir ' + par['destination_path']+par['dataset']+'/'+par['pathways_f']+'/'+basename(t)[:-4] + '/ is present'
-        #    pathways()
+        for t in glob.glob(pwy_samples):
+            print 'sample ', t
+            try:
+                os.mkdir(par['destination_path']+par['dataset']+'/'+par['pathways_f']+'/'+basename(t)[:-4])        
+            except: print 'dir ' + par['destination_path']+par['dataset']+'/'+par['pathways_f']+'/'+basename(t)[:-4] + '/ is present'
+            pathways(t, par['destination_path']+par['dataset']+'/'+ par['pathways_f']+'/'+basename(t)[:-4]+'/'+basename(t)[:-4])
 
         for t in glob.glob(gn_samples):
             try:
