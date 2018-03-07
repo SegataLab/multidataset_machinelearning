@@ -162,6 +162,11 @@ class metadataset:
         add( '-fo', '--feat_only', action='store_true')
         add( '-fac', '--feat_and_condition', default=[], nargs='+')
 
+        add( '--grad', type=str, default=[], nargs='+')
+        add( '--grad_col', type=str, default='Bug-Complex-Abundance')
+        add( '--log_gradient', action='store_true')
+
+
         pp = vars(p.parse_args())
         if (not pp['metaphlan']) and (not pp['pwyrelab']) and (not pp['genefam']) and (not pp['mirna']) and\
            (not pp['markab']) and (not pp['markpres']) and (not pp['pwycov']) and (not pp['only_metadata']) and (not pp['pfam']):
@@ -544,6 +549,44 @@ class metadataset:
             stats.close()
 
         else:
+
+            if bool(self.args['grad']):
+
+                #print data
+                
+                if not self.args['log_gradient']:
+                    grad = np.sum([data[gr].astype('float').tolist() for gr in self.args['grad']], axis=0)
+                else:
+
+                    log_and_inf = lambda xx : np.array([(-np.log(x) if bool(x) else 0.0) for x in xx], dtype=np.float64)
+
+                    #print (np.mean([data[gr].astype('float').tolist() for gr in self.args['grad']], axis=0))
+                    ###print np.nan_to_num(np.log(np.mean([data[gr].astype('float').tolist() for gr in self.args['grad']], axis=0)))
+
+                    #print [n for n in (-np.nan_to_num(np.log(np.mean(\
+                    #        [data[gr].astype('float').tolist() for gr in self.args['grad']], axis=0)))*10)], ' WOOOW'
+                    #exit(1)
+                     ####    np.nan_to_num
+                    ######################grad = [n for n in (-np.nan_to_num(log_inf(
+
+                    grad = log_and_inf(np.mean([\
+                        np.array(data[gr].astype('float').tolist(), dtype=np.float64)*0.01 for gr in self.args['grad']], axis=0))
+
+                    #grad = np.array(map(int, [n for n in (-np.nan_to_num(np.log(np.mean(\
+                    #       [data[gr].astype('float').tolist() for gr in self.args['grad']], axis=0)))*10)]), dtype=np.int64)
+                    #for g in grad: 
+                    #    print type(g), np.isfinite(g), g
+                    #print grad, ' appena definito'
+                    ##### exit(1)
+
+                #print grad, '  qui ci siamo....'
+                #print grad.shape
+
+                #print [data[gr].astype('float').tolist() for gr in self.args['grad']]
+                #exit(1)    
+
+                data[self.args['grad_col']] = (grad - np.min(grad)) / (np.max(grad) - np.min(grad)) #if not self.args['log_gradient'] else grad
+                
 
             if self.args['select_columns']:
                 data = data[self.args['select_columns']]
