@@ -9,6 +9,7 @@ import sys, os
 import matplotlib
 matplotlib.use('Agg')
 from matplotlib import pyplot as plt
+import matplotlib.patches as mpatches
 from sklearn import decomposition
 from sklearn import preprocessing as prep
 from sklearn import manifold
@@ -97,6 +98,7 @@ class beta_diversity(object):
                     self.scatter_plot()
 
 
+
     def read_params(self, args):
 
         p = ap.ArgumentParser()
@@ -130,13 +132,18 @@ class beta_diversity(object):
         arg(	'--title', type=str, default='Ordination Plot')
         arg(	'--dot_size', type=float, default=10)
         arg(	'-txt', '--text_on', type=str, default=None)
+   
 
-        arg(    '--bg_white', action='store_true')
+        arg(	'--alpha', type=float, default=1.0)     
+        arg(	'--facecolor', type=str, choices=['white', 'whitegrid', 'darkgrid'])
 
-        colors = ['RdYlBu', 'plasma', 'inferno', 'winter', 'copper', 'viridis']
+        colors = ['RdYlBu', 'plasma', 'inferno', 'winter', 'copper', 'viridis', 'YlGnBu', 'YlGnBu_r']
         arg(	'-cm', '--cmap', default='viridis', choices=colors+[c+'_r' for c in colors])
         arg(	'-cn', '--cbar_title', default='')
-        arg(	'-go', '--gradient_on', default=None, help='must be a column in the data')
+
+        arg(	'-go', '--gradient_on', default=None, type=str, help='must be a column in the data.')
+        arg(	'-gf', '--gradient_only_for', default=None, type=str, help='definition of a class in case you want gradient only for that class.')
+
         arg(	'--intra_individual', action='store_true')
 
         return vars(p.parse_args())
@@ -172,6 +179,7 @@ class beta_diversity(object):
         return nmds.fit_transform(d)
 
 
+
     def compute_distances(self, data, metric):
         if metric == 'precomputed': return data
         elif metric == 'lbraycurtis':
@@ -184,12 +192,15 @@ class beta_diversity(object):
             return pairwise_distances(data, metric='braycurtis')
 
 
+
     def load_input(self, stdin): return pd.read_csv(stdin, sep='\t', header=None, index_col=0)
+
 
 
     def edit_(self, f, sid, feat_id):
         feats = [i for i in f.index.tolist() for fii in feat_id.split(':') if fii in i]
         return f.loc[[sid,self.args['classes_id'],'color','shape']+feats, :]
+
 
 
     def guess_classes(self, mdf):
@@ -201,6 +212,7 @@ class beta_diversity(object):
         ###for c in class_to_samples: print c, class_to_samples[c], ' UUUUUUU' 
 
         return class_to_samples, sample_to_attributes, sample_to_class            
+
 
 
     def transformation(self, way, f, feat_id, distance):
@@ -218,6 +230,7 @@ class beta_diversity(object):
             #return pd.DataFrame(self.compute_distances(data,distance)\
             #     , columns=metadata.loc[self.args['sample_id'], :].tolist()\
             #     , index=metadata.loc[self.args['sample_id'], :].tolist()), metadata, None
+
 
 
     def beta_div(self):
@@ -249,9 +262,9 @@ class beta_diversity(object):
 
     def scatter_plot(self, ax=None):
 
-        sns.set_style('darkgrid' if not self.args['bg_white'] else 'white')
+        sns.set_style(self.args['facecolor']) 
         cmap = vars(matplotlib.cm)[self.args['cmap']] if self.grads else None
-        fig = False
+        fig, scatterp, single_scatters, legend_done = False, [], [], False
 
         if not bool(ax):
             if not self.grads:
@@ -276,29 +289,62 @@ class beta_diversity(object):
                 present_sample_frame = self.sample_and_coordinates.loc[present]
 
                 scatterp = sns.regplot(x='x1', y='x2', data=present_sample_frame, ax=ax, scatter=True, fit_reg=False\
-                    , scatter_kws={'s': self.args['dot_size']}  \
+                    , scatter_kws={'s': self.args['dot_size']\
+                    , 'alpha': self.args['alpha']}  \
                     , label=self.atts_of_sample[present[0]][0]  \
                     , marker=self.atts_of_sample[present[0]][2] \
                     , color=self.atts_of_sample[present[0]][1])
-            else:
-                
-                scatterp = [sns.regplot(x='x1', y='x2', ax=ax, scatter=True, fit_reg=False\
-                    , data=pd.DataFrame(data=self.sample_and_coordinates.loc[p].values.reshape([1,2])\
-                    , columns=['x1','x2'], index=[p]), scatter_kws={'s': self.args['dot_size']} \
-                    , label='', marker='o', color=cmap(self.grads[p])) for p in present]
 
+                sps = [spine.set_linewidth(0.5) for spine in ax.spines.itervalues()]
+
+            else:
+    
+                if not self.args['gradient_only_for']:   
+
+                    single_scatters = [sns.regplot(x='x1', y='x2', ax=ax, scatter=True, fit_reg=False\
+                        , data=pd.DataFrame(data=self.sample_and_coordinates.loc[p].values.reshape([1,2])\
+                        , columns=['x1','x2'], index=[p]), scatter_kws={'s': self.args['dot_size']} \
+                        , label='', marker='o', color=cmap(self.grads[p])) for p in present]
+                else:
+
+                    if self.args['gradient_only_for'] != c:
+                    #   pass
+                        #scatterp += [sns.regplot(x='x1', y='x2', ax=ax, scatter=True, fit_reg=False\
+                        #    , data=pd.DataFrame(data=self.sample_and_coordinates.loc[p].values.reshape([1,2])\
+                        #    , columns=['x1','x2'], index=[p]), scatter_kws={'s': self.args['dot_size']} \
+                        #    , label='', marker='o', color=cmap(self.grads[p])) for p in present]
+
+                    #else:
+                        scatterp += [sns.regplot(x='x1', y='x2'\
+                            , data=self.sample_and_coordinates.loc[present]\
+                            , ax=ax, scatter=True, fit_reg=False\
+                            , scatter_kws={'s': self.args['dot_size']\
+                            , 'alpha': self.args['alpha']}  \
+                            , label=self.atts_of_sample[present[0]][0]  \
+                            , marker=self.atts_of_sample[present[0]][2] \
+                            , color=self.atts_of_sample[present[0]][1])]
+
+
+                    else: ## self.args['gradient_only_for']:
+                        #if not legend_done:
+                        #    plt.legend(bbox_to_anchor=(0., 1.02, 1., 1.102), loc=3, ncol=3, mode="expand", borderaxespad=1., fontsize=8)
+                        #    legend_done = True
+
+                        single_scatters += [sns.regplot(x='x1', y='x2', ax=ax, scatter=True, fit_reg=False\
+                            , data=pd.DataFrame(data=self.sample_and_coordinates.loc[p].values.reshape([1,2])\
+                            , columns=['x1','x2'], index=[p]), scatter_kws={'s': self.args['dot_size']} \
+                            , label='', marker='o', color=cmap(self.grads[p])) for p in present]
+                    
                 sps = [spine.set_linewidth(0.5) for spine in ax.spines.itervalues()]
                 norm = matplotlib.colors.Normalize(vmin=0.,vmax=1.)
                 cbar = matplotlib.colorbar.ColorbarBase(\
                     ax_cbar, cmap=self.args['cmap'], norm=norm, extend='neither'\
                   , filled=True, drawedges=False, orientation='vertical')
 
-                cbar.set_ticks([0.0, 2.5, 5.0, 7.5, 1.0])
-                cbar.set_ticklabels(['0.0', '2.5', '5.0', '7.5', '1.0'])
+                cbar.set_ticks([0.0, .25, .5, .75, 1.0])
+                cbar.set_ticklabels(['.0', '.25', '.5', '.75', '1.0'])
                 ax_cbar.yaxis.set_ticks_position('left')
-
                 cbar.outline.set_linewidth(.5)
-
                 ax_cbar.set_ylabel(self.args['cbar_title'] if self.args['cbar_title'] else self.args['gradient_on'], size=10)
                 ax_cbar.tick_params(labelsize=10)
 
@@ -308,15 +354,24 @@ class beta_diversity(object):
 
         if bool(fig):
 
-            if not self.grads: plt.legend(bbox_to_anchor=(0., 1.02, 1., 1.102), loc=3, ncol=3, mode="expand", borderaxespad=1., fontsize=8)
+            if not self.grads: 
+                plt.legend(bbox_to_anchor=(0., 1.02, 1., 1.102), loc=3, ncol=3, mode="expand", borderaxespad=1., fontsize=8)
+
+            #elif self.args['gradient_only_for']: 
+            #    patches = [ plt.scatter([],[], marker='o', s=self.args['dot_size'], color=c, label=lab) \
+            #        for c,lab in zip([leg[1] for leg in self.legend], [leg[0] for leg in self.legend]) \
+            #        if lab != self.args['gradient_only_for']]
+            #    ax.legend(handles=[p[0] for p in patches], bbox_to_anchor=(0., 1.02, 1., 1.102), loc=3, ncol=3, mode="expand", borderaxespad=1., fontsize=8)
+
             plt.subplots_adjust(top=0.8)
-            plt.suptitle(self.args['title'], fontsize=8)
+            plt.suptitle(self.args['title'], fontsize=10)
             plt.savefig(self.args['stdout']+('_ANNOT' if self.args['annot'] else '')+'.'+self.args['format'], dpi=400) 
 
             return 'Got.'
         else:
 
             return scatterp
+
 
 
 
@@ -333,39 +388,24 @@ class beta_diversity(object):
 
 
 
+
     def box_plot(self):
        
-        sns.set_style('darkgrid' if not self.args['bg_white'] else 'white')       
+        sns.set_style(self.args['facecolor'])  
+
         #fig, ax = plt.subplots(figsize=(8,6)) 
         #print self.dist_mat, type(self.dist_mat)
 
+
         for c in self.couples_by_class: self.couples_by_class[c], '   copro di mille balene'
+
 
         class box_plot_object(object):
             def __init__(self, class_, color_, cat_var_, couple_of_samples, dist_mat):
                 self.class_ = class_
                 self.color_ = color_
                 self.cat_var_ = cat_var_
-
-                #print ' - '.join(couple_of_samples)
-                #print dist_mat.loc[couple_of_samples[0], :]
-                #print type(dist_mat.loc[couple_of_samples[0], :])
-                #print dist_mat.loc[couple_of_samples[0], :].shape               
-                #exit(1)
-                #try:
                 self.beta_diversity = dist_mat.get_value(couple_of_samples[0], couple_of_samples[1])
-                #except AttributeError: 
-                #    self.beta_diversity = 'NaN'  
-
-
-        #f_leg = self.legend
-        #for e,c in enumerate(self.legend):  
-        #    if len(self.couples_by_class[c[0]]) == 0: 
-        #        del f_leg[e]
-        #        del self.couples_by_class[c[0]]
-        #self.legend = f_leg
-
-        ##condition = lambda c : True if (len(self.couples[))
 
         data = pd.DataFrame(\
                 [[ob.class_, ob.color_, ob.cat_var_, ob.beta_diversity]   \
@@ -381,10 +421,10 @@ class beta_diversity(object):
                        [[couple for couple in self.couples_by_class[c[0]]] for c in self.legend if len(self.couples_by_class[c[0]])]))\
                   ) ]], columns=['', 'color', 'group_by', 'Beta-Diversity']) 
 
-        ##print data
 
         ax = sns.swarmplot(data=data, x='', y='Beta-Diversity', hue=None if len(list(set(data['group_by'].tolist())))==1 else 'group_by', dodge=True, s=4, color='black', alpha=0.7)
         ax = sns.boxplot(data=data, x='', y='Beta-Diversity', hue=None if len(list(set(data['group_by'].tolist())))==1 else 'group_by', palette=dict([(c[0], c[1]) for c in self.legend]))
+
 
         data.columns = ['class', 'color', 'group_by', 'Beta-Diversity']
         self.groups = dict([(cl, data.loc[data['class'].isin([cl]), 'Beta-Diversity'].tolist()) for cl in list(set(data['class'].tolist()))])
@@ -401,7 +441,7 @@ class beta_diversity(object):
 
     def plot_alpha_diversity(self, f, meta):
 
-        sns.set_style('darkgrid')
+        sns.set_style(self.args['facecolor'])  
         samples = dict([(e+1,n) for e,n in enumerate(meta.loc['sampleID', :].tolist())])
 
         self.simple_richness = dict([(samples[i], np.count_nonzero(f.loc[i].astype(float).tolist())) for i in f.index.tolist()])
@@ -457,12 +497,9 @@ class beta_diversity(object):
             print '================================================================================\n'
 
             for group_a,group_b in self.combinations_of_classes:
-
-                statistic,p_value = stats.ttest_ind(self.groups[group_a][richness], self.groups[group_b][richness], axis=0, equal_var=False)
-                
+                statistic,p_value = stats.ttest_ind(self.groups[group_a][richness], self.groups[group_b][richness], axis=0, equal_var=False)                
                 #print self.groups[group_a][richness], p_value
                 #print self.groups[group_b][richness], p_value
-
                 print ' - '.join(list((group_a,group_b))),
                 print ' P-PVALUE = ' + str(p_value),
                 print 'sign. TRUE' if (p_value < 0.05) else ''
