@@ -17,6 +17,8 @@ import itertools
 ## python run.py crc --define study_condition:CRC:control -ds ZellerG_2014 YuJ_2015 FengQ_2015 VogtmannE_2016 CM_rescignocrc CM_lilt HanniganGD_2017 -db genefamilies -do feat_curve -g0 c:entropy -g1 nt:1000 -g2 special
 
 
+### yes
+
 class feat_curve(object):
     save_folder = '../Images/'
 
