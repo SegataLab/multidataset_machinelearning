@@ -19,8 +19,11 @@ import itertools
 
 ### yes
 
+
 class feat_curve(object):
+
     save_folder = '../Images/'
+
 
     def __init__(self, title, datasets, db, defined_problem, algo, grid0, grid1, grid2, fig_fmt):
         sns.set(style='white')
@@ -52,6 +55,7 @@ class feat_curve(object):
             self.plot_64_species()
 
 
+
     def plot_8192_genefamilies(self):
 
         self.curves = {}
@@ -67,7 +71,9 @@ class feat_curve(object):
         self.x_ticks = ['2','4','8','16','32','64','128','256','512','1024','2048','4096','8192']
 
 
+
     def plot_64_species(self):
+
         self.curves = dict([(data if data not in self.utils.data_aliases else self.utils.data_aliases[data], sorted([v for v in self.get_cross_values(data)], key = lambda ls : ls[0])[1:]) for data in self.datasets])
         self.lodo_curves = dict([(data if data not in self.utils.data_aliases else self.utils.data_aliases[data]\
 		, sorted([l for l in self.get_lodo_values(data)], key = lambda ls: ls[0])) for data in self.datasets]) ## [1:] dopo ls [0] per metaphlan
@@ -98,6 +104,7 @@ class feat_curve(object):
         #else:
         #for k in self.plottable_data: print k, self.plottable_data[k], ' MMMMMeRR'
         #exit(1)
+
 
 
     def do_the_plot(self):
@@ -133,6 +140,7 @@ class feat_curve(object):
 			, 'lodo', fig_fmt), dpi=600, facecolor='w', frameon=False, edgecolor='w')
 
 
+
     def get_markers(self):
         markers, j = {}, 0
         if self.title == 'crc': 
@@ -141,6 +149,7 @@ class feat_curve(object):
                 markers[data_] = self.symbols[j]
                 j += 1
             return markers
+
 
 
     def get_signs(self):
@@ -153,8 +162,10 @@ class feat_curve(object):
             return markers
 
 
+
     def get_cross_values(self, dataset): return self.utils.all_auc_from_transfer([dataset, dataset], self.db, self.algo, self.tests[0], self.grid0, self.grid1, self.grid2)
     def get_lodo_values(self, dataset): return self.utils.all_auc_from_lodo(dataset, self.db, self.algo, self.tests[0], self.grid0, self.grid1, self.grid2)
+
 
 
 if __name__ == '__main__':
