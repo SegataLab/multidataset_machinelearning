@@ -24,11 +24,22 @@ from scipy import stats
 
 class beta_diversity(object):
 
+    #def put_significance(self):
+    #    for i in range(1, len(self.distributions)):
+    #        x, y = self.distributions[i], self.distributions[i-1]
+
     def __init__(self, params=None):
+
+        #def they_overlap(pos_a1, pos_a2, pos_b1, pos_b2):
+        #    second_pos = pos_b2 if (pos_b2 > pos_a2) else pos_a2
+        self.is_a_comb = lambda c, _l_ : bool(c in _l_) 
+        self.they_overlap = lambda pos_a1, pos_a2, pos_b1, pos_b2 : bool( min([pos_a2, pos_b2]) - max([pos_a1, pos_b1]) )
+
 
         if not isinstance(params, dict):  self.args = self.read_params(sys.argv)
         else: self.args = params
 
+        self.p_value = lambda group_a, group_b : stats.ttest_ind(group_a, group_b, axis=0, equal_var=False)[1]
         self.stdin = pd.read_csv(self.args['stdin'], sep='\t', header=None, index_col=0)
 
         if self.args['gradient_on']: 
@@ -133,11 +144,10 @@ class beta_diversity(object):
         arg(	'--dot_size', type=float, default=10)
         arg(	'-txt', '--text_on', type=str, default=None)
    
-
         arg(	'--alpha', type=float, default=1.0)     
         arg(	'--facecolor', type=str, choices=['white', 'whitegrid', 'darkgrid'])
 
-        colors = ['RdYlBu', 'plasma', 'inferno', 'winter', 'copper', 'viridis', 'YlGnBu', 'YlGnBu_r']
+        colors = ['RdYlBu', 'plasma', 'inferno', 'winter', 'copper', 'viridis', 'YlGnBu', 'YlGnBu_r', 'cool', 'cool_r']
         arg(	'-cm', '--cmap', default='viridis', choices=colors+[c+'_r' for c in colors])
         arg(	'-cn', '--cbar_title', default='')
 
@@ -145,6 +155,8 @@ class beta_diversity(object):
         arg(	'-gf', '--gradient_only_for', default=None, type=str, help='definition of a class in case you want gradient only for that class.')
 
         arg(	'--intra_individual', action='store_true')
+        arg(	'--p_values', type=str, default='above', choices=['above', 'below'])
+        arg(	'--p_values_only_for', type=str, nargs='+', default=[])
 
         return vars(p.parse_args())
 
@@ -336,13 +348,13 @@ class beta_diversity(object):
                             , label='', marker='o', color=cmap(self.grads[p])) for p in present]
                     
                 sps = [spine.set_linewidth(0.5) for spine in ax.spines.itervalues()]
-                norm = matplotlib.colors.Normalize(vmin=0.,vmax=1.)
+                norm = matplotlib.colors.Normalize(vmin=min(self.grads.values()), vmax=max(self.grads.values()))   ##vmin=0.,vmax=1.)
                 cbar = matplotlib.colorbar.ColorbarBase(\
                     ax_cbar, cmap=self.args['cmap'], norm=norm, extend='neither'\
                   , filled=True, drawedges=False, orientation='vertical')
 
-                cbar.set_ticks([0.0, .25, .5, .75, 1.0])
-                cbar.set_ticklabels(['.0', '.25', '.5', '.75', '1.0'])
+                #cbar.set_ticks(range(-3, 2, 1)) #[0.0, .25, .5, .75, 1.0])
+                #cbar.set_ticklabels(list(map(str, range(-3, 2, 1)))) #np.arange(min(self.grads.values()), max(self.grads.values()), 0.5)) ) )   #['.0', '.25', '.5', '.75', '1.0'])
                 ax_cbar.yaxis.set_ticks_position('left')
                 cbar.outline.set_linewidth(.5)
                 ax_cbar.set_ylabel(self.args['cbar_title'] if self.args['cbar_title'] else self.args['gradient_on'], size=10)
@@ -392,13 +404,9 @@ class beta_diversity(object):
     def box_plot(self):
        
         sns.set_style(self.args['facecolor'])  
-
-        #fig, ax = plt.subplots(figsize=(8,6)) 
-        #print self.dist_mat, type(self.dist_mat)
-
-
         for c in self.couples_by_class: self.couples_by_class[c], '   copro di mille balene'
 
+        print self.args['p_values_only_for']
 
         class box_plot_object(object):
             def __init__(self, class_, color_, cat_var_, couple_of_samples, dist_mat):
@@ -422,13 +430,52 @@ class beta_diversity(object):
                   ) ]], columns=['', 'color', 'group_by', 'Beta-Diversity']) 
 
 
-        ax = sns.swarmplot(data=data, x='', y='Beta-Diversity', hue=None if len(list(set(data['group_by'].tolist())))==1 else 'group_by', dodge=True, s=4, color='black', alpha=0.7)
-        ax = sns.boxplot(data=data, x='', y='Beta-Diversity', hue=None if len(list(set(data['group_by'].tolist())))==1 else 'group_by', palette=dict([(c[0], c[1]) for c in self.legend]))
-
+        ax = sns.swarmplot(data=data, x='', y='Beta-Diversity'\
+          , hue=None if len(list(set(data['group_by'].tolist())))==1 else 'group_by', dodge=True, s=2, color='black', alpha=1.)
+        ax = sns.boxplot(data=data, x='', y='Beta-Diversity'	
+          , hue=None if len(list(set(data['group_by'].tolist())))==1 else 'group_by', palette=dict([(c[0], c[1]) for c in self.legend]))
 
         data.columns = ['class', 'color', 'group_by', 'Beta-Diversity']
         self.groups = dict([(cl, data.loc[data['class'].isin([cl]), 'Beta-Diversity'].tolist()) for cl in list(set(data['class'].tolist()))])
         self.combinations_of_classes = list(map(tuple, itertools.combinations(list(set(data['class'].tolist())), 2)))
+               
+        self.distributions = []
+        for class_ in data['class'].tolist(): 
+            if class_ not in self.distributions: self.distributions.append(class_) 
+
+        self.indices = dict([(d,e) for e,d in enumerate(self.distributions)])
+        self.couple_levels = dict()
+        drop = data['Beta-Diversity'].max()*0.02
+
+        if self.args['p_values'] == 'above': H = data['Beta-Diversity'].max() + drop #* 2
+        else: H = data['Beta-Diversity'].min() - drop ##* 2
+
+        level = H
+        #cover = dict([(dat,level) for dat in self.distributions])
+        distances = dict([(couple, (max([self.indices[couple[0]], self.indices[couple[1]]]) \
+                                  - min([self.indices[couple[0]], self.indices[couple[1]]]))) \
+                                    for couple in self.combinations_of_classes])
+        self.done_ = dict([(couple, False) for couple in self.combinations_of_classes])
+        ##prevs = {} #min(distances.values())
+
+        distance = 1
+        for i in range(1, len(self.distributions)): ##list(itertools.chain.from_iterable(range(prev, len(self.distributions)), ):
+            cup = self.distributions[i], self.distributions[i-1]   
+            if self.is_a_comb(cup, self.combinations_of_classes): print 'coppia OK'
+            else:
+                cup = (cup[1],cup[0])
+                if self.is_a_comb(cup, self.combinations_of_classes): print 'reversed coppia OK'
+            sign = self.p_value_on_plot(cup, drop, level)
+        
+        level = (level + drop * 2) if self.args['p_values'] == 'above' else (level - drop * 2)
+        #print distances, '  guarda questo'
+
+        for distance in range(2, max(distances.values())+1):
+            for any_comb in self.combinations_of_classes:
+                if distances[any_comb] == distance: 
+                   sign =  self.p_value_on_plot(any_comb, drop, level)  
+                   if sign: 
+                       level = (level + drop * 2) if self.args['p_values'] == 'above' else (level - drop * 2 )   
 
         plt.setp(ax.get_xticklabels(), rotation=38, ha='right')
         plt.subplots_adjust(bottom=.3) 
@@ -436,6 +483,25 @@ class beta_diversity(object):
         plt.savefig(self.args['stdout']+'.'+self.args['format'], dpi=400)
 
         self.betadiv_statistical_support(self.args['text_on'])
+
+
+    def p_value_on_plot(self, cup, drop, level, just_zerotwo=False):
+        if not self.done_[cup]:  
+            self.done_[cup] = True
+            p_ = self.p_value(self.groups[cup[0]], self.groups[cup[1]])    
+            if p_ < 0.05:
+                plt.plot(\
+                   [self.indices[cup[0]] + ((drop if not just_zerotwo else just_zerotwo) if self.indices[cup[0]] < self.indices[cup[1]] else -(drop if not just_zerotwo else just_zerotwo))\
+                  , self.indices[cup[0]] + ((drop if not just_zerotwo else just_zerotwo) if self.indices[cup[0]] < self.indices[cup[1]] else -(drop if not just_zerotwo else just_zerotwo))\
+                  , self.indices[cup[1]] - ((drop if not just_zerotwo else just_zerotwo) if self.indices[cup[0]] < self.indices[cup[1]] else -(drop if not just_zerotwo else just_zerotwo))\
+                  , self.indices[cup[1]] - ((drop if not just_zerotwo else just_zerotwo) if self.indices[cup[0]] < self.indices[cup[1]] else -(drop if not just_zerotwo else just_zerotwo))]\
+                 , [level, level + drop*0.5, level + drop*0.5, level] if self.args['p_values'] == 'above' \
+                    else [level, level - drop*0.5, level - drop*0.5, level], lw=1., color='k')
+                
+                plt.text((self.indices[cup[0]]+self.indices[cup[1]])*0.5, level\
+                        ,'p. '+str(p_), ha='center', va='bottom', color='k', fontsize=3)
+                return p_
+        return False
 
 
 
@@ -458,21 +524,67 @@ class beta_diversity(object):
                    , self.atts_of_sample[sam][2]\
                    , self.atts_of_sample[sam][0])  for sam in samples.values()]\
              , columns = [ 'Richness', 'Log Richness', 'Shannon Richness', 'Gini-Simpson Richness', 'group_by', '' ] )
+        
+        self.combinations_of_classes = list(map(tuple, itertools.combinations(list(set(data[''].tolist())), 2)))
+
+        #print self.combinations_of_classes
+
+        self.distributions = []
+        for class_ in data[''].tolist():
+            if class_ not in self.distributions: self.distributions.append(class_)
+        #print self.distributions
+        
+        self.indices = dict([(d,e) for e,d in enumerate(self.distributions)])
+        distances = dict([(couple, (max([self.indices[couple[0]], self.indices[couple[1]]]) \
+                       - min([self.indices[couple[0]], self.indices[couple[1]]]))) \
+                       for couple in self.combinations_of_classes]) 
+
+        #for k in self.indices: print k, self.indices[k]
+
+
+        self.done_ = dict([(couple, False) for couple in self.combinations_of_classes])
 
         for type_of_richness in ['Richness', 'Log Richness', 'Shannon Richness', 'Gini-Simpson Richness']:
             data_ = data[[type_of_richness, 'group_by', '']]
-         
+            self.groups = dict([(cl, data.loc[data[''].isin([cl]), type_of_richness].tolist()) for cl in self.distributions])         
+
+            print 
+
             fig = plt.figure(figsize=(8,6))
+
             ax = sns.swarmplot(data=data_, x='', y=type_of_richness, hue=None if len(list(set(data['group_by'].tolist())))==1 else 'group_by'\
 	     , dodge=True, s=4, color='black', alpha=0.7)
             ax = sns.boxplot(data=data_, x='', y=type_of_richness, hue=None if len(list(set(data['group_by'].tolist())))==1 else 'group_by'\
 	     , palette=dict([(c[0], c[1]) for c in self.legend]))
-                            
+
+            drop = data[type_of_richness].max()*0.02
+            if self.args['p_values'] == 'above': H = data[type_of_richness].max() + drop
+            else: H = data[type_of_richness].min() - drop
+            level = H   
+
+            distance = 1             
+            for i in range(1, len(self.distributions)): ##list(itertools.chain.from_iterable(range(prev, len(self.distributions)), ):
+                cup = self.distributions[i], self.distributions[i-1]
+                if self.is_a_comb(cup, self.combinations_of_classes): print 'coppia OK'
+                else:
+                    cup = (cup[1],cup[0])
+                if self.is_a_comb(cup, self.combinations_of_classes): print 'reversed coppia OK'
+                sign = self.p_value_on_plot(cup, drop, level, 0.01)
+                #print sign, ' hko appen trovato ', type_of_richness
+
+            level = (level + drop * 2) if self.args['p_values'] == 'above' else (level - drop * 2)
+            for distance in range(2, max(distances.values())+1):
+                for any_comb in self.combinations_of_classes:
+                    if distances[any_comb] == distance:
+                       sign =  self.p_value_on_plot(any_comb, drop, level, 0.01)
+                       ###print sign, ' hko appen trovato ', type_of_richness
+                       if sign:
+                           level = (level + drop * 2) if self.args['p_values'] == 'above' else (level - drop * 2 )
+       
             plt.setp(ax.get_xticklabels(), rotation=38, ha='right')
             plt.subplots_adjust(bottom=.3)
             plt.suptitle(self.args['title'], fontsize=10)
             plt.savefig(self.args['stdout']+type_of_richness.replace(' ','')+'.'+self.args['format'], dpi=400)
-
 
         data.columns = ['Richness', 'Log Richness', 'Shannon Richness', 'Gini-Simpson Richness', 'group_by', 'class']
         self.groups = dict([(class_, dict([(type_, np.array([given_dict[s] for s in samples.values() \
@@ -481,9 +593,7 @@ class beta_diversity(object):
               , [self.simple_richness, self.log_richness, self.shannon_richness, self.ginisimpson_richness])]))\
                 for class_ in list(set(data['class'].tolist()))])
 
-        self.combinations_of_classes = list(map(tuple, itertools.combinations(list(set(data['class'].tolist())), 2)))
         self.alphadiv_statistical_support(self.args['text_on']) 
-
 
 
 
@@ -505,6 +615,7 @@ class beta_diversity(object):
                 print 'sign. TRUE' if (p_value < 0.05) else ''
                 
             print '******************************************'
+
 
 
 

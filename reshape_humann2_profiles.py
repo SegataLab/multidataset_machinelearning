@@ -93,7 +93,7 @@ def marker_presence(sample,name):
 
 
 def pathways(sample,name):
-    s = open(name+'_profile.txt', 'w')
+    s = open(name+'_profile.tsv', 'w')
     basename = lambda x : x.split('/')[-1] 
     header = '#sampleID\t%s\n' %basename(sample)[:-4]
     ss = []
@@ -119,7 +119,7 @@ def pathways(sample,name):
     s.close()
 
 def genefamilies(sample, name):
-    s = open(name+'_profile.txt', 'w')
+    s = open(name+'_profile.tsv', 'w')
     basename = lambda x : x.split('/')[-1]
     header = '#sampleID\t%s\n' %basename(sample)[:-4]
     ss = []

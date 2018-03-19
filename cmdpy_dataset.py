@@ -34,7 +34,9 @@ import pandas as pd
 
 
 class metadataset:
+
     def __init__(self):
+
         self.args = self.read_params(sys.argv)
         self.imp_fields = \
             ['dataset_name'\
@@ -44,6 +46,7 @@ class metadataset:
             ,'sequencing_platform'\
             ,'DNA_extraction_kit'\
             ,'PMID']
+
         self.profile_species = set()
         self.profile_markab = set()
         self.profile_markpres = set()
@@ -65,6 +68,7 @@ class metadataset:
 
 	# - FOR SPECIFY DIFFERENT PATHS		
         add( '--base_path', type=str, default='/CM/data/meta/')
+        add( '--metadata_path', type=str, default='/CM/data/meta/')
         add( '--metadata_name', type=str, default=None)
 
         add( '--metaphlan_path', type=str, default='/CM/data/meta/')
@@ -96,9 +100,9 @@ class metadataset:
 
         # - WORD AFTER '_' TO DESIGN THE PROFILE FILE
         add( '--metaphlan_title', type=str, default='_profile')
-        add( '--pwy_title', type=str, default='_profile', choices=['_profile','_complete_profile'])
-        add( '--cov_title', type=str, default='_profile', choices=['_profile','_complete_profile'])
-        add( '--genefam_title', type=str, default='_profile', choices=['_profile','_complete_profile'])
+        add( '--pwy_title', type=str, default='_profile')
+        add( '--cov_title', type=str, default='_profile') #, choices=['_profile','_complete_profile'])
+        add( '--genefam_title', type=str, default='_profile') #, choices=['_profile','_complete_profile'])
         add( '--pfam_title', type=str, default='_profile')
         add( '--mirna_title', type=str, default='_profile')
 
@@ -114,21 +118,20 @@ class metadataset:
         add( '-cw', '--control_word', type=str, default=None, help='add a common field to all the externally derived controls\
              , the added field will be in third position (after dataset_name sampleID) under header "ext_characterization"')
         
-        add( '-sc', '--select_columns', type=str, default=[], nargs='+')
-        add( '-scff', '--select_columns_from_file', type=str, default=None)
+        add( '-sc', '--select_columns', type=str, default=[], nargs='+', help='"Selected Columns"')
+        add( '-scff', '--select_columns_from_file', type=str, default=None, help='"Select Columns from a File"')
         # - FURTHER METAPHLAN SPECIFICS
-        add( '-mx', '--mixed_taxa', action='store_true')
-        add( '-ys', '--yes_strain', action='store_true')
+        add( '-mx', '--mixed_taxa', action='store_true', help='"With Metaphlan, Uses All the Taxa Together"')
+        add( '-ys', '--yes_strain', action='store_true', help='"With Metaphlan, Leave the Strain Level There"')
         add( '-tx', '--taxon', type=str, choices=['k__','p__','c__','o__','f__','g__','s__'], default='s__')
-        add( '-sr', '--shrink', action='store_true')
-        # - only metadata is for prepare the bigger group to
-        # - randomize after. 	
+        add( '-sr', '--shrink', action='store_true', help='"With Metaphlan, Uses as Names only The Currenty Selected Taxon"')
+
+        # - only metadata is lasofor prepare the bigger group to randomize after. 	
         add( '-x', '--exclude_samples', nargs='+', type=str, default=[]) ## options to avoid as much as possible 
-        add( '-om', '--only_metadata', action='store_true', help='This option is for gen control to ramdomize after.')
+        add( '-om', '--only_metadata', action='store_true', help='This Option is Usefull Also for Control To Be Ramdomised After.')
         add( '-mgp', '--merge_profile_exec', default='/scratchCM/users/paolo.manghi/multidataset_machinelearning/merge_metaphlan_tables02.py')
 
-
-        add('--top_features', default=None, type=int)
+        ##add('--top_features', default=None, type=int)
         # - TRANSFORMATIONS
         add( '-pn', '--percentile_normalization', type=str, default=None\
             ,help='percentile normalization: eg -pn study_condtion:control:CRC whatever is in the 1st field is the column to look at. Whats is int eh 2nd \
@@ -142,25 +145,21 @@ class metadataset:
         # - ON FEATURES
         add( '-mf', '--meta_features', action='store_true')
         add( '-fs', '--feature_selection', default=None, type=str \
-            , help='either a series of features to eval, or a file with a list of features')		
+            , help='"Differs From -scff in That This Only Has Control on Features, -scff Also On Metadata"')
 
         # - WILKOXON RANK FOR TOO LARGE FEATURE SETS
-        add( '--not_gene_wilcoxon', action='store_false')
-        add( '--pwy_wilcoxon', action='store_true')
-        add( '--cov_wilcoxon', action='store_true')
-        add( '--taxa_wilcoxon', action='store_true')
-        add( '--not_mark_wilcoxon', action='store_false')
         add( '-wk', '--wilcoxon', type=str, default=None, help='--wilcoxon study_condition:CRC:control')
+        add( '--bonferroni', action='store_true')
 
         # - OUTPUT SPECIFICS
-        add( '-t', '--transpose', action='store_true', help='Output with fields on headers instead of first column.')
-        add( '-b', '--both', action='store_true', help='Outputs the straight output plus the one with fields as headers.')
-        add( '-of', '--output_file', type=str, default=None)
+        add( '-t', '--transpose', action='store_true', help='Output Has Field Names On Columns')
+        add( '-b', '--both', action='store_true', help='Outputs Two Results, One Has Fields On Indexes The Other On Columns.')
+        add( '-of', '--output_file', type=str, default=None, help='"If Don\'t Specify the -of, There You\'ll Be Able to Sedn the Result As A STDOUT."')
         add( '-gs', '--give_statistics', type=str, default=None\
           , help='Statistics on metadata -gs study_condition:sample_type:disease, or -gs random/randomization/rand/randrandrand/randanything')
 
         add( '-fo', '--feat_only', action='store_true')
-        add( '-fac', '--feat_and_condition', default=[], nargs='+')
+        add( '-fac', '--feat_and_condition', default=[], nargs='+', help='"Alternative to -scff, Completely On Command Line"')
 
         add( '--grad', type=str, default=[], nargs='+')
         add( '--grad_col', type=str, default='Bug-Complex-Abundance')
@@ -171,6 +170,7 @@ class metadataset:
         if (not pp['metaphlan']) and (not pp['pwyrelab']) and (not pp['genefam']) and (not pp['mirna']) and\
            (not pp['markab']) and (not pp['markpres']) and (not pp['pwycov']) and (not pp['only_metadata']) and (not pp['pfam']):
             pp['metaphlan'] = True
+
         pp['proportions'] = list(map(int, pp['proportions'].split(',')))
         if len(pp['proportions'])!=2:
             raise IOError('proportions must contain 2 numbers separated by a comma.')
@@ -222,7 +222,7 @@ class metadataset:
             self.profile_cov.add(self.args['base_path']+dataset_name+'/'+self.args['pwycoverage_folder']+sample+'/'+sample+self.args['cov_title']+'.txt')
 
         if self.args['pwyrelab'] and (not sample in self.args['exclude_samples']): 
-            self.profile_pwys.add(self.args['base_path']+dataset_name+'/'+self.args['pwyrelab_folder']+sample+'/'+sample+self.args['pwy_title']+'.txt')
+            self.profile_pwys.add(self.args['base_path']+dataset_name+'/'+self.args['pwyrelab_folder']+sample+'/'+sample+self.args['pwy_title']+'.tsv')
 
         if self.args['genefam'] and (not sample in self.args['exclude_samples']): 
             self.profile_genes.add(self.args['base_path']+dataset_name+'/'+self.args['genefam_folder']+sample+'/'+ sample+self.args['genefam_title']+'.tsv')
@@ -234,8 +234,11 @@ class metadataset:
     def handle_profile_direct_folder(self, sample, dataset_name):
 
         if self.args['metaphlan'] and (not sample in self.args['exclude_samples']):
-            #print 'profile for sample %s will be searched in ', self.args['metaphlan_path'] + dataset_name + '/' + self.args['metaphlan_folder'] + sample + self.args['metaphlan_title'] + '.tsv'
-            self.profile_species.add(self.args['metaphlan_path'] + dataset_name + '/' + self.args['metaphlan_folder'] + sample + self.args['metaphlan_title'] + '.tsv')
+            self.profile_species.add( self.args['base_path'] + dataset_name + '/' + self.args['metaphlan_folder'] + sample + self.args['metaphlan_title'] + '.tsv')
+
+        if self.args['pwyrelab'] and (not sample in self.args['exclude_samples']):
+            self.profile_pwys.add( self.args['base_path'] + dataset_name + '/' + self.args['pwyrelab_folder'] + sample + self.args['pwy_title'] + '.tsv')
+
 
 
     def create_dataset(self):
@@ -302,7 +305,7 @@ class metadataset:
         for i in range(len(self.args['select'])):
             n = str(i+1)
             if selection[n]:
-                tab = datasets(self.args['base_path'],self.args['dataset_input'][i],selection[n],'calling function dataset number '+str(n), False)
+                tab = datasets(self.args['metadata_path'],self.args['dataset_input'][i],selection[n],'calling function dataset number '+str(n), False)
                 if self.args['columns'][i]: 
                     for cta in self.args['columns'][i]: tab[cta[0]] = cta[1]
 
@@ -319,10 +322,10 @@ class metadataset:
             ### from a big large dataset of controls
             act_samples = len(f.sampleID.tolist()) if not self.args['random_controls_multiple_of'] else self.args['random_controls_multiple_of']
             if len(f)==0:
-                f = datasets(self.args['base_path'],self.args['control_filename'],'select'+str(act_samples*int(self.args['proportions'][0]))+\
+                f = datasets(self.args['metadata_path'],self.args['control_filename'],'select'+str(act_samples*int(self.args['proportions'][0]))+\
                 (':study_condition:control' if not self.args['control_conditions'] else self.args['control_conditions']),'calling function for controls',True)
             else:
-                f = f.append(datasets(self.args['base_path'],self.args['control_filename'],'select'+str(act_samples*int(self.args['proportions'][0]))+\
+                f = f.append(datasets(self.args['metadata_path'],self.args['control_filename'],'select'+str(act_samples*int(self.args['proportions'][0]))+\
                 (':study_condition:control' if not self.args['control_conditions'] else self.args['control_conditions']),'calling function for controls',True))
 
         f = f.reset_index(drop=True)
@@ -363,8 +366,12 @@ class metadataset:
         #***********************#
 
         def profile_(fname): 
-
-            df = pd.read_csv(fname, header=0, sep='\t', low_memory=False if not self.args['genefam'] else True)
+	
+            df = pd.read_csv(fname, header=0, sep='\t', low_memory=(\
+						False if \
+						    (not self.args['genefam'] \
+				                     or (self.args['change_profile_func'] and self.args['pwyrelab'])) \
+                                           else True))
             df = df[1:]
             df = df.reset_index(drop=True)
             df = df.T
@@ -376,7 +383,6 @@ class metadataset:
 
             df.index = [prev.split('_'+'complete' if 'complete' in prev else '_prof')[0] for prev in df.index.tolist()]
             return df
-
         #***********************#
 
         self.feat = []
@@ -441,38 +447,31 @@ class metadataset:
             data = data.merge(pro_, left_on='sampleID', right_index=True, how='left')
             self.feat += pro_.columns.tolist()
         
-        ##print self.feat, ' eccotela.. riga 437'
-
         if bool(self.args['mirna']):
             self.merge_profiles(self.profile_mirna, 'mirna')
             pro_ = profile_('merged_profiles_mirna.csv')
             data = data.merge(pro_, left_on='sampleID', right_index=True, how='left')
             self.feat += pro_.columns.tolist()
 
-        #print self.feat[-1], ' eccotela.. riga 503'
-
-        if self.args['give_statistics'] and (not self.args['give_statistics'].startswith('rand')): statistics(data, self.args['give_statistics'].split(':') )
+        if self.args['give_statistics'] and (not self.args['give_statistics'].startswith('rand')):
+            statistics(data, self.args['give_statistics'].split(':') )
         if self.args['output_file'] and (os.path.exists(self.args['output_file'])): 
             os.remove(self.args['output_file'])
  
         for exte in ['species','pwys','markab','markpres','cover','pfam','mirna']:
-            if os.path.exists('merged_profiles_'+exte+'.csv'): os.remove('merged_profiles_'+exte+'.csv')
+            if os.path.exists('merged_profiles_'+exte+'.csv'):
+                os.remove('merged_profiles_'+exte+'.csv')
 
 
         if bool(self.args['wilcoxon']):
             column, dist1, dist2 = self.args['wilcoxon'].split(':')
             ind_1 = data[data[column].isin([dist1])].index.tolist()
             ind_2 = data[data[column].isin([dist2])].index.tolist()
-            if not self.args['not_gene_wilcoxon']:				 
-                gene_feat = [ff for ff in gene_feat if (sts.mannwhitneyu(data[ff].iloc[ind_1], data[ff].iloc[ind_2], alternative='two-sided')<=0.00001)]
-            if not self.args['not_mark_wilcoxon']:
-                marka_feat = [ff for ff in marka_feat if (sts.mannwhitneyu(data[ff].iloc[ind_1], data[ff].iloc[ind_2], alternative='two-sided')<=0.00001)]
-                markp_feat = [ff for ff in marka_feat if (sts.mannwhitneyu(data[ff].iloc[ind_1], data[ff].iloc[ind_2], alternative='two-sided')<=0.00001)]
-            if self.args['taxa_wilcoxon']:
-                phlan_feat = [ff for ff in phlan_feat if (sts.mannwhitneyu(data[ff].iloc[ind_1], data[ff].iloc[ind_2], alternative='two-sided')<=0.00001)]
-            if self.args['pwy_wilcoxon']:
-                pwy_feat = [ff for ff in pwy_feat if (sts.mannwhitneyu(data[ff].iloc[ind_1], data[ff].iloc[ind_2], alternative='two-sided')<=0.00001)]
-            self.feat = phlan_feat + pwy_feat + gene_feat + marka_feat + markp_feat + cov_feat
+
+            bonf = float(len(self.feat))
+            self.feat = [ff for ff in self.feat if \
+	         (sts.mannwhitneyu(data[ff].iloc[ind_1], data[ff].iloc[ind_2], alternative='two-sided')<(0.01 \
+                                                                    if not self.args['bonferroni'] else (0.01/bonf)))]
             data = data.reset_index(drop=True)
 
 
@@ -500,34 +499,16 @@ class metadataset:
         if bool(self.args['feature_selection']):
             with open(self.args['feature_selection']) as fs:
                 data = data[self.metadata + [feat.rstrip() for feat in fs.readlines()]]
-                
-                #line = fs.readline().rstrip().split()
-                #f_imp = True if len(line)==2 else False 
-                #line = True
-                #features = [line.rstrip() for line in fs.readlines()] if not f_imp else dict([tuple(line.rstrip().split()[:2]) for line in fs.readlines()])	
-                #if isinstance(features, list):
-                #    features,data,self.feat = [o for o in (set(features) & set(self.feat))], data[self.metadata+features], features
-                #elif isinstance(features, dict): 
-                #    for k in features: 
-                #        if k not in (set(features) & set(feat)): del features[k]
-                #    data = data[self.metadata + [k for k in features.keys()]]
-                #    for k in features.keys(): data.loc[:,k].apply(lambda a : a*features[k]*10 )##, axis=1)
-                #    feat = [k for k in features.keys()]
-        #print self.feat[-1], ' eccotela.. riga 503'
-
 
         if self.args['output_file']: print 'Current dataset: %i features.' % len(self.feat)
         if self.args['output_file']: print 'Current dataset: %i samples.' % len(data.sampleID.tolist())
 
-
         if bool(self.args['log_transform']): 
             data.loc[:,self.feat]=data.loc[:,self.feat].apply(lambda d: np.log(np.array(map(float,d), dtype=np.float64)+1.),axis=0)
-
 
         if bool(self.args['exclude_samples']):
             data = data[~data['sampleID'].isin(set(self.args['exclude_samples']))] 
             data = data.reset_index(drop=True)  ##  print data
-
  
         return data
 
@@ -555,7 +536,7 @@ class metadataset:
                 #print data
                 
                 if not self.args['log_gradient']:
-                    grad = np.sum([data[gr].astype('float').tolist() for gr in self.args['grad']], axis=0)
+                    grad = np.mean([data[gr].astype('float').tolist() for gr in self.args['grad']], axis=0)
                 else:
 
                     log_and_inf = lambda xx : np.array([(-np.log(x) if bool(x) else 0.0) for x in xx], dtype=np.float64)
@@ -569,8 +550,10 @@ class metadataset:
                      ####    np.nan_to_num
                     ######################grad = [n for n in (-np.nan_to_num(log_inf(
 
-                    grad = log_and_inf(np.mean([\
-                        np.array(data[gr].astype('float').tolist(), dtype=np.float64)*0.01 for gr in self.args['grad']], axis=0))
+                    #print self.args['grad']
+
+                    #exit(1)
+                    grad = -log_and_inf(np.mean([np.array(data[gr].astype('float').tolist(), dtype=np.float64)*0.01 for gr in self.args['grad']], axis=0))
 
                     #grad = np.array(map(int, [n for n in (-np.nan_to_num(np.log(np.mean(\
                     #       [data[gr].astype('float').tolist() for gr in self.args['grad']], axis=0)))*10)]), dtype=np.int64)
@@ -583,18 +566,32 @@ class metadataset:
                 #print grad.shape
 
                 #print [data[gr].astype('float').tolist() for gr in self.args['grad']]
-                #exit(1)    
+                #exit(1) 
+   
+                if not self.args['log_gradient']:
+                    data[self.args['grad_col']] = (grad - np.min(grad)) / (np.max(grad) - np.min(grad)) #if not self.args['log_gradient'] else grad
+                else: 
+                    data[self.args['grad_col']] = grad
 
-                data[self.args['grad_col']] = (grad - np.min(grad)) / (np.max(grad) - np.min(grad)) #if not self.args['log_gradient'] else grad
+                #print data[self.args['grad_col']].tolist()
                 
 
             if self.args['select_columns']:
                 data = data[self.args['select_columns']]
 
-            elif self.args['select_columns_from_file']:
+            if self.args['select_columns_from_file']:
+                fts = open(self.args['select_columns_from_file'], 'r')
 
-                with open(self.args['select_columns_from_file']) as fts:
-                    data = data[[feat.rstrip() for feat in fts.readlines()]]
+                #with open(self.args['select_columns_from_file'], 'r') as fts:
+                     #print [feat.rstrip() for feat in fts.readlines()], ' ma che avra di strano...'
+               # for f in fts:
+                #    print f.rstrip() in data.columns.tolist()
+                
+ 
+                data = data[list(f.rstrip() for f in fts.readlines())]
+                fts.close()
+
+            #print ' sono uscio da suo if'
 
             if self.args['feat_only']:
                 data = data[['sampleID'] + self.feat]

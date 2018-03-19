@@ -39,9 +39,14 @@ class effect_size_barplot(object):
 
 
     def save_feats(self, fname, feat_list):
+
         with open(fname, 'w') as out:
-            [out.write(basic + '\n') for basic in self.args['basic_fields']] 
-            [out.write((f if self.args['feature_names']!='Species' else 's__'+f)+'\n') for f in feat_list]
+            [out.write(basic + '\n') for basic in self.args['basic_fields']]
+            if self.args['feature_names'] != 'Pathways':
+                [out.write((f if self.args['feature_names']!='Species' else 's__'+f)+'\n') for f in feat_list]
+            else: 
+                [out.write((f if self.args['feature_names']!='Pathways' else f.replace('_','-'))+'\n') for f in feat_list]
+
 
 
     def write_statistical_support(self, texton, data):
