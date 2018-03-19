@@ -24,6 +24,7 @@ import subprocess
 ## python run.py crc --define study_condition:CRC:control --datasets FengQ_2015 ZellerG_2014 CM_rescignocrc YuJ_2015 CM_lilt VogtmannE_2016 HanniganGD_2017 -al rf -do heat_map -db metaphlan -g0 c:entropy -g1 nt:1000 -g2 nsl:5 -cm RdYlBu_r -nif 5
 ## python run.py crc --define study_condition:CRC:control --datasets FengQ_2015 ZellerG_2014 CM_rescignocrc YuJ_2015 CM_lilt VogtmannE_2016 HanniganGD_2017 -al rf -do heat_map -db pathways -g0 nt:1000 -g1 nsl:5 -g2 c:entropy -nif 5
 
+#yes
 
 class feature_heatmap(object):
 
