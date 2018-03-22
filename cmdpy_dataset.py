@@ -47,6 +47,8 @@ class metadataset:
             ,'DNA_extraction_kit'\
             ,'PMID']
 
+        self.numerator = 0
+
         self.profile_species = set()
         self.profile_markab = set()
         self.profile_markpres = set()
@@ -230,6 +232,10 @@ class metadataset:
         if self.args['mirna'] and (not sample in self.args['exclude_samples']):
             self.profile_mirna.add(self.args['base_path']+dataset_name+'/'+self.args['mirna_folder']+sample+'/'+sample+self.args['mirna_title']+'.tsv')
 
+            #self.numerator += 1 
+            #print os.path.exists(self.args['base_path']+dataset_name+'/'+self.args['mirna_folder']+sample+'/'+sample+self.args['mirna_title']+'.tsv'), 'that ', self.numerator, '  exist'
+
+
 
     def handle_profile_direct_folder(self, sample, dataset_name):
 
@@ -366,12 +372,17 @@ class metadataset:
         #***********************#
 
         def profile_(fname): 
+
+            #print fname, ' eil filename: esiste? risp => ', os.path.exists(fname)
 	
             df = pd.read_csv(fname, header=0, sep='\t', low_memory=(\
 						False if \
 						    (not self.args['genefam'] \
 				                     or (self.args['change_profile_func'] and self.args['pwyrelab'])) \
                                            else True))
+
+
+
             df = df[1:]
             df = df.reset_index(drop=True)
             df = df.T
@@ -459,8 +470,7 @@ class metadataset:
             os.remove(self.args['output_file'])
  
         for exte in ['species','pwys','markab','markpres','cover','pfam','mirna']:
-            if os.path.exists('merged_profiles_'+exte+'.csv'):
-                os.remove('merged_profiles_'+exte+'.csv')
+            if os.path.exists('merged_profiles_'+exte+'.csv'): os.remove('merged_profiles_'+exte+'.csv')
 
 
         if bool(self.args['wilcoxon']):
@@ -473,6 +483,15 @@ class metadataset:
 	         (sts.mannwhitneyu(data[ff].iloc[ind_1], data[ff].iloc[ind_2], alternative='two-sided')<(0.01 \
                                                                     if not self.args['bonferroni'] else (0.01/bonf)))]
             data = data.reset_index(drop=True)
+
+
+        if bool(self.args['bonferroni']):
+            if bool(self.args['output_file']):
+                print 'A usable alpha for this dataset (BOFERRONI): ', 0.01/float(len(self.feat)) 
+            else:
+                bonferroni = open('bonferroni_alpha.txt', 'w')
+                bonferroni.write(str(0.01/float(len(self.feat))))   
+                bonferroni.close()
 
 
         if self.args['meta_features']:
