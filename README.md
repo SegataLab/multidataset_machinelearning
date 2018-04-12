@@ -78,6 +78,155 @@ optional arguments:
 ### Performing explorative analyses on a meta-cohort or a meta-dataset ###
 
 * cmdpy_dataset is a tool for collecting a theoretically unlimited number of datasets: it assumes that for any dataset involved in the meta-analyses, community profiles are available, so as corresponding metadata tables. The profiles for which the tool has been conceived were Metaphlan2 and Humann2 profiles, along the lines of the curatedMetagenomicDataset R package. It has been then applied to other types of profiling. 
+
+```
+usage: cmdpy_dataset.py [-h] [--base_path BASE_PATH]
+                        [--metadata_path METADATA_PATH]
+                        [--metadata_name METADATA_NAME]
+                        [--metaphlan_path METAPHLAN_PATH]
+                        [--change_profile_func] [--metaphlan] [--pwyrelab]
+                        [--genefam] [--markab] [--markpres] [--pwycov]
+                        [--pfam] [--mirna]
+                        [--metaphlan_folder METAPHLAN_FOLDER]
+                        [--pwyrelab_folder PWYRELAB_FOLDER]
+                        [--genefam_folder GENEFAM_FOLDER]
+                        [--pwycoverage_folder PWYCOVERAGE_FOLDER]
+                        [--markab_folder MARKAB_FOLDER]
+                        [--markpres_folder MARKPRES_FOLDER]
+                        [--pfam_folder PFAM_FOLDER]
+                        [--mirna_folder MIRNA_FOLDER]
+                        [--metaphlan_title METAPHLAN_TITLE]
+                        [--pwy_title PWY_TITLE] [--cov_title COV_TITLE]
+                        [--genefam_title GENEFAM_TITLE]
+                        [--pfam_title PFAM_TITLE] [--mirna_title MIRNA_TITLE]
+                        [-rc] [-pr PROPORTIONS] [-cf CONTROL_FILENAME]
+                        [-mulo RANDOM_CONTROLS_MULTIPLE_OF]
+                        [-cc CONTROL_CONDITIONS]
+                        [-cn CONTROL_NAMES CONTROL_NAMES] [-cw CONTROL_WORD]
+                        [-sc SELECT_COLUMNS [SELECT_COLUMNS ...]]
+                        [-scff SELECT_COLUMNS_FROM_FILE] [-mx] [-ys]
+                        [-tx {k__,p__,c__,o__,f__,g__,s__}] [-sr]
+                        [-x EXCLUDE_SAMPLES [EXCLUDE_SAMPLES ...]] [-om]
+                        [-mgp MERGE_PROFILE_EXEC]
+                        [-pn PERCENTILE_NORMALIZATION] [-lg] [-dm]
+                        [-zt ZERO_THRESHOLD [ZERO_THRESHOLD ...]] [-mf]
+                        [-fs FEATURE_SELECTION] [-wk WILCOXON] [--bonferroni]
+                        [--mapped_number] [--mapped_percentage] [-t] [-b]
+                        [-of OUTPUT_FILE] [-gs GIVE_STATISTICS] [-fo]
+                        [-fac FEAT_AND_CONDITION [FEAT_AND_CONDITION ...]]
+                        [--grad GRAD [GRAD ...]] [--grad_col GRAD_COL]
+                        [--log_gradient]
+                        datasets [datasets ...]
+
+positional arguments:
+  datasets              E.g.: LiJ_2014.study_condition:control,body_site:stool
+                        .Another possibility is setting: LiJ_2014.study_condit
+                        ion:control,col:country:FRA,col:body_subsite:subgingiv
+                        al_plaque to add a new column to the loaded metadata
+                        table.
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --base_path BASE_PATH
+  --metadata_path METADATA_PATH
+  --metadata_name METADATA_NAME
+  --metaphlan_path METAPHLAN_PATH
+  --change_profile_func
+  --metaphlan
+  --pwyrelab
+  --genefam
+  --markab
+  --markpres
+  --pwycov
+  --pfam
+  --mirna
+  --metaphlan_folder METAPHLAN_FOLDER
+  --pwyrelab_folder PWYRELAB_FOLDER
+  --genefam_folder GENEFAM_FOLDER
+  --pwycoverage_folder PWYCOVERAGE_FOLDER
+  --markab_folder MARKAB_FOLDER
+  --markpres_folder MARKPRES_FOLDER
+  --pfam_folder PFAM_FOLDER
+  --mirna_folder MIRNA_FOLDER
+  --metaphlan_title METAPHLAN_TITLE
+  --pwy_title PWY_TITLE
+  --cov_title COV_TITLE
+  --genefam_title GENEFAM_TITLE
+  --pfam_title PFAM_TITLE
+  --mirna_title MIRNA_TITLE
+  -rc, --randomize_controls
+  -pr PROPORTIONS, --proportions PROPORTIONS
+                        1,2 (1:moiety of cnts wrt cases, 2:moiety of training
+                        cnts wrt to test cnts.)
+  -cf CONTROL_FILENAME, --control_filename CONTROL_FILENAME
+  -mulo RANDOM_CONTROLS_MULTIPLE_OF, --random_controls_multiple_of RANDOM_CONTROLS_MULTIPLE_OF
+                        If not specified, uses as bases for the mutiplicity
+                        the allready collected samples.
+  -cc CONTROL_CONDITIONS, --control_conditions CONTROL_CONDITIONS
+                        e.g: study_condition:IBD:control,
+                        gender:female,study_condition:control
+  -cn CONTROL_NAMES CONTROL_NAMES, --control_names CONTROL_NAMES CONTROL_NAMES
+                        the names to the train and test of the randomized
+                        controls;must be two but can be equal: the first is
+                        the training.
+  -cw CONTROL_WORD, --control_word CONTROL_WORD
+                        add a common field to all the externally derived
+                        controls , the added field will be in third position
+                        (after dataset_name sampleID) under header
+                        "ext_characterization"
+  -sc SELECT_COLUMNS [SELECT_COLUMNS ...], --select_columns SELECT_COLUMNS [SELECT_COLUMNS ...]
+                        "Selected Columns"
+  -scff SELECT_COLUMNS_FROM_FILE, --select_columns_from_file SELECT_COLUMNS_FROM_FILE
+                        "Select Columns from a File"
+  -mx, --mixed_taxa     "With Metaphlan, Uses All the Taxa Together"
+  -ys, --yes_strain     "With Metaphlan, Leave the Strain Level There"
+  -tx {k__,p__,c__,o__,f__,g__,s__}, --taxon {k__,p__,c__,o__,f__,g__,s__}
+  -sr, --shrink         "With Metaphlan, Uses as Names only The Currenty
+                        Selected Taxon"
+  -x EXCLUDE_SAMPLES [EXCLUDE_SAMPLES ...], --exclude_samples EXCLUDE_SAMPLES [EXCLUDE_SAMPLES ...]
+  -om, --only_metadata  This Option is Usefull Also for Control To Be
+                        Ramdomised After.
+  -mgp MERGE_PROFILE_EXEC, --merge_profile_exec MERGE_PROFILE_EXEC
+  -pn PERCENTILE_NORMALIZATION, --percentile_normalization PERCENTILE_NORMALIZATION
+                        percentile normalization: eg -pn
+                        study_condtion:control:CRC whatever is in the 1st
+                        field is the column to look at. Whats is int eh 2nd is
+                        the reference percentiles distribution (should be some
+                        kind of control) whatever is in the last field will be
+                        uniformed to the reference: make usage of add_column
+                        option of this script to help yourself.
+  -lg, --log_transform  performs (log(1+anyfeature))
+  -dm, --dense_matrix   cut out features being zeros in <zero_threshold>
+                        percentage of the samples [ default = 10 per ]
+  -zt ZERO_THRESHOLD [ZERO_THRESHOLD ...], --zero_threshold ZERO_THRESHOLD [ZERO_THRESHOLD ...]
+  -mf, --meta_features
+  -fs FEATURE_SELECTION, --feature_selection FEATURE_SELECTION
+                        "Differs From -scff in That This Only Has Control on
+                        Features, -scff Also On Metadata"
+  -wk WILCOXON, --wilcoxon WILCOXON
+                        --wilcoxon study_condition:CRC:control
+  --bonferroni
+  --mapped_number
+  --mapped_percentage
+  -t, --transpose       Output Has Field Names On Columns
+  -b, --both            Outputs Two Results, One Has Fields On Indexes The
+                        Other On Columns.
+  -of OUTPUT_FILE, --output_file OUTPUT_FILE
+                        "If Don't Specify the -of, There You'll Be Able to
+                        Sedn the Result As A STDOUT."
+  -gs GIVE_STATISTICS, --give_statistics GIVE_STATISTICS
+                        Statistics on metadata -gs
+                        study_condition:sample_type:disease, or -gs
+                        random/randomization/rand/randrandrand/randanything
+  -fo, --feat_only
+  -fac FEAT_AND_CONDITION [FEAT_AND_CONDITION ...], --feat_and_condition FEAT_AND_CONDITION [FEAT_AND_CONDITION ...]
+                        "Alternative to -scff, Completely On Command Line"
+  --grad GRAD [GRAD ...]
+  --grad_col GRAD_COL
+  --log_gradient
+
+```
+
 * cmdpy_betadiversity.py: the data collected by cmdpy_dataset.py can be send in STDIN to cmdpy_betadiversity.py (see below).
 
 ```
