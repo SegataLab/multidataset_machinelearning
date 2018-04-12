@@ -8,19 +8,169 @@
 ### Downloading and Curating public Whole-Genome-Shotgun cohorts ###
 
 * ncbi_downloader.py & ncbi_downloader_dev.py are the programs for executing the physical download of public datasets from NCBI: these script can be applid to different data types, such as AMPLICON sequencing and Viromes.
+
+```
+usage: NCBI WGS dataset downloader [-h] [-asp ASPERA_P] [-fqp FASTQDUMP_P]
+                                   [-vdb VDB_VALIDATE] [-where DOWNLOAD_DIR]
+                                   [-dkd] [-ncores CORE_NUMBER] [-st STRATEGY]
+                                   [-fasta] [-ntbz] [-nsp3]
+                                   [-m {all,only_download,jd,xml,bash,ghost,controll,allready_downloaded,onebyone,one,sample,onlydownload_onebyone,onebyone_onlydownload}]
+                                   [-xv {0,1,2,3}]
+                                   [-std SAMPLES_TO_DOWNLOAD [SAMPLES_TO_DOWNLOAD ...]]
+                                   [-s]
+                                   download singularly or acc to a listfile.
+                                   bioprojectcode
+
+Provide a bprj code and download a dataset. USAGE EXAMPLE: python
+ncbi_downloader.py ZellerG_2014 266076 or provide an option with multiple
+lines of names and codes
+
+positional arguments:
+  download singularly or acc to a listfile.
+                        The name of the dataset or of the listfile. A listfile
+                        line must be: dataset PRBJNA FirstAuthSurnameN_YEAR:
+                        Castro-NallarE_2015 Either you can pass the name of a
+                        file containing a list of dataset and codes
+  bioprojectcode        sdt project/dataset code on ncbi: PRJNA255439
+                        bioproject code is ass a 6-digits numerical code (eq
+                        to the last 6 or not). This numerical code (e.g.
+                        266076) can be passed too. Default is NULL for dataset
+                        listfile.
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -asp ASPERA_P, --aspera_p ASPERA_P
+                        set the place in which to search for aspera
+  -fqp FASTQDUMP_P, --fastqdump_p FASTQDUMP_P
+                        set the place in which to search for fastq-dump
+  -vdb VDB_VALIDATE, --vdb_validate VDB_VALIDATE
+                        set the path of vdb-validate
+  -where DOWNLOAD_DIR, --download_dir DOWNLOAD_DIR
+                        the place where the dataset is downloaded
+  -dkd, --dont_keep_downloads
+                        when used as flag, it TARs the /downloads/ dir of any
+                        sample. By default, /downloads/ is removed.
+  -ncores CORE_NUMBER, --core_number CORE_NUMBER
+                        the number of cores used in the parallel processing;
+                        default is 4
+  -st STRATEGY, --strategy STRATEGY
+                        This script is though to download WGS-strategy data
+                        but changing the strategy can work even for other
+                        types of sequencing (e.g.: AMPLICON)
+  -fasta                Usable for dumping to get fastA, still trial.
+  -ntbz, --not_to_bzip  If specified, samples are not bzipped.
+  -nsp3, --non_split_3
+  -m {all,only_download,jd,xml,bash,ghost,controll,allready_downloaded,onebyone,one,sample,onlydownload_onebyone,onebyone_onlydownload}, --mode {all,only_download,jd,xml,bash,ghost,controll,allready_downloaded,onebyone,one,sample,onlydownload_onebyone,onebyone_onlydownload}
+                        You can use these argument in case you need to handle
+                        a complicate download.
+  -xv {0,1,2,3}, --xml_verbosity {0,1,2,3}
+  -std SAMPLES_TO_DOWNLOAD [SAMPLES_TO_DOWNLOAD ...], --samples_to_download SAMPLES_TO_DOWNLOAD [SAMPLES_TO_DOWNLOAD ...]
+                        Speficied, you download only the samples argumented
+                        and no others, independently from modality.
+  -s, --separate
+
+```
+
 * cure.py is a script containing many utility functionalities aimed to manually curate clinical metadata. Examples of the utility of this curation are the metadata table of the CuratedMetagenomicDataset R package.
+
+##### Flag -m of ncbi_downloader_dev.py can be used to reduce the all pipe to part of it, including the sole exploration of the current state of the dataset on NCBI (-m xml) #####
 
 ### Performing explorative analyses on a meta-cohort or a meta-dataset ###
 
 * cmdpy_dataset is a tool for collecting a theoretically unlimited number of datasets: it assumes that for any dataset involved in the meta-analyses, community profiles are available, so as corresponding metadata tables. The profiles for which the tool has been conceived were Metaphlan2 and Humann2 profiles, along the lines of the curatedMetagenomicDataset R package. It has been then applied to other types of profiling. 
 * cmdpy_betadiversity.py: the data collected by cmdpy_dataset.py can be send in STDIN to cmdpy_betadiversity.py (see below).
 
-#### Cmdpy_betadiversity.py ####
+```
+usage: cmdpy_betadiversity.py [-h] [-if STDIN] [-of STDOUT] [-adiv]
+                              [-sc SAVE_COORDINATES] [-lc LOAD_COORDINATES]
+                              [-d {lbraycurtis,sbraycurtis,canberra,chebyshev,correlation,dice,hamming,jaccard,kulsinski,mahalanobis,matching,minkowski,rogerstanimoto,russellrao,seuclidean,sokalmichener,sokalsneath,sqeuclidean,yule,cityblock,cosine,euclidean,l1,l2,manhattan,braycurtis,precomputed}]
+                              [-a {mds,pca,nmds,boxp}]
+                              [-z {k__,s__,PWY,UniRef90,g__}] [-si SAMPLE_ID]
+                              [-ci CLASSES_ID] [-m MASK [MASK ...]]
+                              [-ll LEGEND_LOC] [-fmt {svg,png}]
+                              [--no_ordination] [--boxplot] [-ex] [--annot]
+                              [--title TITLE] [--dot_size DOT_SIZE]
+                              [-txt TEXT_ON] [--alpha ALPHA]
+                              [--facecolor {white,whitegrid,darkgrid}]
+                              [--squared_plot]
+                              [-cm {RdYlBu,plasma,inferno,winter,copper,viridis,YlGnBu,YlGnBu_r,cool,cool_r,RdYlBu_r,plasma_r,inferno_r,winter_r,copper_r,viridis_r,YlGnBu_r,YlGnBu_r_r,cool_r,cool_r_r}]
+                              [-cn CBAR_TITLE] [-go GRADIENT_ON]
+                              [-gf GRADIENT_ONLY_FOR] [--intra_individual]
+                              [--p_values {above,below}]
+                              [--p_values_only_for P_VALUES_ONLY_FOR [P_VALUES_ONLY_FOR ...]]
+                              [--welch]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -if STDIN, --stdin STDIN
+  -of STDOUT, --stdout STDOUT
+-adiv, --alpha_diversity
+  -sc SAVE_COORDINATES, --save_coordinates SAVE_COORDINATES
+  -lc LOAD_COORDINATES, --load_coordinates LOAD_COORDINATES
+  -d {lbraycurtis,sbraycurtis,canberra,chebyshev,correlation,dice,hamming,jaccard,kulsinski,mahalanobis,matching,minkowski,rogerstanimoto,russellrao,seuclidean,sokalmichener,sokalsneath,sqeuclidean,yule,cityblock,cosine,euclidean,l1,l2,manhattan,braycurtis,precomputed}, --distance {lbraycurtis,sbraycurtis,canberra,chebyshev,correlation,dice,hamming,jaccard,kulsinski,mahalanobis,matching,minkowski,rogerstanimoto,russellrao,seuclidean,sokalmichener,sokalsneath,sqeuclidean,yule,cityblock,cosine,euclidean,l1,l2,manhattan,braycurtis,precomputed}
+  -a {mds,pca,nmds,boxp}, --algorithm {mds,pca,nmds,boxp}
+  -z {k__,s__,PWY,UniRef90,g__}, --feature_identifier {k__,s__,PWY,UniRef90,g__}
+  -si SAMPLE_ID, --sample_id SAMPLE_ID
+  -ci CLASSES_ID, --classes_id CLASSES_ID
+  -m MASK [MASK ...], --mask MASK [MASK ...]
+  -ll LEGEND_LOC, --legend_loc LEGEND_LOC
+  -fmt {svg,png}, --format {svg,png}
+  --no_ordination
+  --boxplot
+  -ex, --explain
+  --annot
+  --title TITLE
+  --dot_size DOT_SIZE
+  -txt TEXT_ON, --text_on TEXT_ON
+  --alpha ALPHA
+  --facecolor {white,whitegrid,darkgrid}
+  --squared_plot
+  -cm {RdYlBu,plasma,inferno,winter,copper,viridis,YlGnBu,YlGnBu_r,cool,cool_r,RdYlBu_r,plasma_r,inferno_r,winter_r,copper_r,viridis_r,YlGnBu_r,YlGnBu_r_r,cool_r,cool_r_r}, --cmap {RdYlBu,plasma,inferno,winter,copper,viridis,YlGnBu,YlGnBu_r,cool,cool_r,RdYlBu_r,plasma_r,inferno_r,winter_r,copper_r,viridis_r,YlGnBu_r,YlGnBu_r_r,cool_r,cool_r_r}
+  -cn CBAR_TITLE, --cbar_title CBAR_TITLE
+  -go GRADIENT_ON, --gradient_on GRADIENT_ON
+                        must be a column in the data.
+  -gf GRADIENT_ONLY_FOR, --gradient_only_for GRADIENT_ONLY_FOR
+                        definition of a class in case you want gradient only
+                        for that class.
+  --intra_individual
+  --p_values {above,below}
+  --p_values_only_for P_VALUES_ONLY_FOR [P_VALUES_ONLY_FOR ...]
+  --welch
+
+```
+
+#### cmdpy_betadiversity.py computes alpha and beta diversity, and provides graphical support to the analyses. ####
 
 * this tool computes beta and alpha diversity, and provides graphical and statistical representation of the required result, including full-optional ordination plots (MDS, PCA, NMDS).
+* when alpha diversity is required 4 box-plots are returned, according to different richness measueres: Shannon entropy, Gini-Simpson information content, taxon richness and logarithmic taxon richness.
+* when beta-diversity is required, the box-plot graphical representation is available so as the ordination-plot representation.
 
-### A comprehensive machine learning meta-analyses ###
+##### cmdpy_betadiversity contains many options to speed up ordination-plot represenation needings #####
 
+* the follwing are the parameters to saving and loading point coordinates among different ordination plots.
+* relying o the same sample IDs, different graphical versions of the same points and possible
+
+```
+-sc SAVE_COORDINATES, --save_coordinates SAVE_COORDINATES
+-lc LOAD_COORDINATES, --load_coordinates LOAD_COORDINATES
+```
+
+* according to the same principle
+
+```
+-go GRADIENT_ON, --gradient_on GRADIENT_ON
+                        must be a column in the data.
+-gf GRADIENT_ONLY_FOR, --gradient_only_for GRADIENT_ONLY_FOR
+                        definition of a class in case you want gradient only
+                        for that class.
+```
+
+* are the parameters allowing a uniform color gradient among all or part of the points in the graph
+
+
+### A comprehensive machine learning meta-analyses based on a meta-dataset like the one mentioned above ###
+
+*
 * 
 * 
 * 
