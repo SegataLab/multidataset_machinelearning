@@ -3,6 +3,7 @@
 * multidataset_machinlearning is a collection of Python programs aimed to speed up the most essential steps in a WGS metagenomic analyses.
 * it relies upone several commonly used Python libraries: among these numpy, scipy, pandas, scikit-learn, matplotlib, seaborn & biopython are not part of the original native libraries.
 * it is not meant to be used as a standalone: the idea is that of having your own dataset profiled through some kind of either taxonomical functional tool devoted to profiling microbial communities. The present package has been designed to ease the work on datasest profiled though Metaphlan2 and Humann2 tools, but other tools can be employed. (see paragraphs below).
+* besides the data processing, the whole machine learning analyses relies on MetAML tool.  
 
 ## There are essentially 3 goals pursued by the script in the collection: ##
 ### Downloading and Curating public Whole-Genome-Shotgun cohorts ###
