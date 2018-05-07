@@ -1,7 +1,10 @@
 #!/usr/bin/env python
 
-#  USAGE: 
+#  USAGE EXAMPLES: 
 #  python cmdpy_dataset.py CM_periimplantitis.study_condition:peri-implantitis,col:color:crimson,col:shape:o,col:define:periimplantitis CM_periimplantitis.study_condition:control,col:color:blue,col:shape:o,col:define:control --shrink | python cmdpy_betadiversity.py -a mds -sc coords.txt -of pi_plot 
+
+## b) python cmdpy_dataset.py CM_periimplantitis.study_condition:mucositis,col:color:black,col:shape:o,col:define:mucositis CM_periimplantitis.study_condition:peri-implantitis,col:color:blue,col:shape:o,col:define:periimplantitis CM_periimplantitis.study_condition:healthy,col:color:green,col:shape:o,col:define:healthy --taxon g__ | python cmdpy_betadiversity.py -avgd mettiqua_latua_betadiversity -of general_trial_output
+## meaningof of b): call dataset with three classe belonging to CM_perimolnatitis data: periimplantitis, mucositis, heathy: each has a shape, a color and a definition. The selected taxon is genus (g__). No other specification means: metaphlan feature types and metadata attached. This table is passed to betadiversities. The selected operattion is avgd, that means saving on a file a dataframe with, for any sample, the average beta diversity from any class 
 
 
 import argparse as ap
@@ -19,6 +22,8 @@ import seaborn as sns
 import pandas as pd
 import numpy as np
 import itertools
+from matplotlib import rc
+matplotlib.rcParams['svg.fonttype'] = 'none'
 from scipy import stats
 
 
@@ -39,13 +44,14 @@ class beta_diversity(object):
         if not isinstance(params, dict):  self.args = self.read_params(sys.argv)
         else: self.args = params
 
-        self.p_value = lambda group_a, group_b : stats.ttest_ind(group_a, group_b, axis=0, equal_var=False)[1]
+        self.p_value = lambda group_a, group_b : stats.ttest_ind(group_a, group_b, axis=0, equal_var=self.args['welch'])[1]
         self.stdin = pd.read_csv(self.args['stdin'], sep='\t', header=None, index_col=0)
 
         if self.args['gradient_on']: 
             self.grads = dict([(s, g) for s,g in zip(\
                 self.stdin.loc[self.args['sample_id'],:].tolist()\
               , self.stdin.loc[self.args['gradient_on'],:].astype('float').tolist())])
+
         else: self.grads = None
         self.subjects = dict([(s, sub) for s,sub in zip(self.stdin.loc[self.args['sample_id'],:].tolist(), self.stdin.loc['subjectID', :].tolist())])
 
@@ -60,6 +66,8 @@ class beta_diversity(object):
 
         else:
             self.shapes_types = '.,ov^<>1234sp*hH+xDd|_'
+            if self.args['save_beta_diversity']: self.args['boxplot'] = True
+
             self.coordinates, self.metadata, self.explained_var = self.beta_div()
             self.sample_in_class, self.atts_of_sample, self.sample_to_class = self.guess_classes(self.metadata)
 
@@ -70,6 +78,10 @@ class beta_diversity(object):
                 self.legend = sorted([ll.split() for ll in list(set([' '.join(l) for l in self.atts_of_sample.values()]))], key = lambda w : w[0])
                 self.couples_by_class = dict([(k, [ss for ss in list(map(list, itertools.combinations(self.sample_in_class[k], 2))) \
                   if self.subjects[ss[0]]==self.subjects[ss[1]]]) for k in self.sample_in_class]) ## self.stdin.loc[self.args['sample_id'],:].tolist()])
+
+                #for k in self.couples_by_class: 
+                #    print k, self.couples_by_class[k], ' ou yessss'
+
                 #self.legend = sorted([ll.split() for ll in list(set([' '.join(l) for l in self.atts_of_sample.values()])) if ll.split()[0] in self.couples_by_class], key = lambda w : w[0])
 
                 #if not self.args['intra_individual'] else \
@@ -88,15 +100,24 @@ class beta_diversity(object):
             #self.classes_by_couple = dict([(v,k) for k,v in self.couples_by_class.items()])
 
             self.sample_and_coordinates = self.stack_sample_coordinates() \
-                if not self.args['load_coordinates'] \
-                else pd.read_csv(self.args['load_coordinates'], sep='\t', header=0, index_col=0)
+                	if not self.args['load_coordinates'] \
+                	else pd.read_csv(self.args['load_coordinates'], sep='\t', header=0, index_col=0)
+
             if self.args['save_coordinates']: self.save_coordinates(self.args['save_coordinates'])
             if self.args['mask']: self.mask()
             if self.args['explain']: self.explain()
     
-            if (self.args['boxplot']):
+            #if self.args['save_beta_diversity']:
+            #    self.save_beta_matrix()
+
+            if (self.args['boxplot']) or (self.args['avg_dist_from_centroid']) or self.args['save_beta_diversity']:
                 self.dist_mat = pd.DataFrame(data=self.coordinates, columns=self.metadata.loc['sampleID', :], index=self.metadata.loc['sampleID', :])
-                self.box_plot()
+
+                if self.args['save_beta_diversity']: self.dist_mat.to_csv(self.args['save_beta_diversity'], sep='\t', header=True, index=True)
+
+                if self.args['avg_dist_from_centroid']: self.avg_dist_from_centroid()
+
+                if self.args['boxplot']: self.box_plot()
 
             else:
                 #self.sample_and_coordinates = self.stack_sample_coordinates() \
@@ -107,6 +128,19 @@ class beta_diversity(object):
                 #if self.args['explain']: self.explain()
                 if not (not self.args['no_ordination']): 
                     self.scatter_plot()
+
+
+    def avg_dist_from_centroid(self):
+
+        centroids = [cent for cent in self.sample_in_class.keys()]
+
+        self.dist_from_centroids = pd.DataFrame(dict([(sample, \
+            [np.mean(self.dist_mat.loc[sample, self.sample_in_class[cent]].tolist()) \
+            for cent in centroids]) \
+            for sample in self.stdin.loc[self.args['sample_id'], :].tolist()]), \
+          index = centroids).T
+
+        print self.dist_from_centroids
 
 
 
@@ -128,7 +162,7 @@ class beta_diversity(object):
         arg(	'-lc', '--load_coordinates', default=None, type=str)
         arg(	'-d', '--distance', default='braycurtis', type=str, choices=distances)
         arg(	'-a', '--algorithm', default='mds', type=str, choices=['mds','pca','nmds','boxp'])
-        arg(	'-z', '--feature_identifier', default='s__', type=str, choices=['k__','s__','PWY','UniRef90'])
+        arg(	'-z', '--feature_identifier', default='s__', type=str, choices=['k__','s__','PWY','UniRef90','g__'])
         arg(	'-si', '--sample_id', default='sampleID', type=str)
         arg(	'-ci', '--classes_id', default='define', type=str)
         arg(	'-m', '--mask', default=[], nargs='+', type=str)
@@ -146,6 +180,7 @@ class beta_diversity(object):
    
         arg(	'--alpha', type=float, default=1.0)     
         arg(	'--facecolor', type=str, choices=['white', 'whitegrid', 'darkgrid'])
+        arg(	'--squared_plot', action='store_true')
 
         colors = ['RdYlBu', 'plasma', 'inferno', 'winter', 'copper', 'viridis', 'YlGnBu', 'YlGnBu_r', 'cool', 'cool_r']
         arg(	'-cm', '--cmap', default='viridis', choices=colors+[c+'_r' for c in colors])
@@ -155,8 +190,12 @@ class beta_diversity(object):
         arg(	'-gf', '--gradient_only_for', default=None, type=str, help='definition of a class in case you want gradient only for that class.')
 
         arg(	'--intra_individual', action='store_true')
+        arg(	'-sb', '--save_beta_diversity', default=None, type=str)
+        arg(	'-avgd', '--avg_dist_from_centroid', default=None, type=str)
+
         arg(	'--p_values', type=str, default='above', choices=['above', 'below'])
         arg(	'--p_values_only_for', type=str, nargs='+', default=[])
+        arg(	'--welch', action='store_false')
 
         return vars(p.parse_args())
 
@@ -192,16 +231,27 @@ class beta_diversity(object):
 
 
 
+
     def compute_distances(self, data, metric):
-        if metric == 'precomputed': return data
+
+        if metric == 'precomputed': 
+            return data
+
         elif metric == 'lbraycurtis':
-            ldata = np.matrix([[(math.log(1.0+float(l)) if float(l) > 0.0 else 0.0) for l in d] for d in data])
+
+            #print type(data), data.shape, data[0:6]
+            ldata = data.apply(lambda col : [( (1.+np.log(float(x)) if float(x) > 0.0 else 0.0) if str(x)[0].isdigit() else x) for x in col], axis=1) #np.matrix([[(np.log(1.0+float(l)) if float(l) > 0.0 else 0.0) for l in d] for d in data])
+            #print ldata.shape, ldata[0:10]
             return pairwise_distances(ldata, metric='braycurtis')
+
         elif metric == 'sbraycurtis':
             sdata = np.matrix([[(math.sqrt(float(l)) if float(l) > 0.0 else 0.0) for l in d] for d in data])
             return pairwise_distances(sdata, metric='braycurtis')
+
         else:
+            #print data
             return pairwise_distances(data, metric='braycurtis')
+
 
 
 
@@ -222,15 +272,18 @@ class beta_diversity(object):
         sample_to_class = dict([(s,c) for s,c in zip(mdf.loc[self.args['sample_id'], :].tolist(), mdf.loc[self.args['classes_id'], :].tolist())])
 
         ###for c in class_to_samples: print c, class_to_samples[c], ' UUUUUUU' 
-
         return class_to_samples, sample_to_attributes, sample_to_class            
 
 
 
     def transformation(self, way, f, feat_id, distance):
+
         data = f.loc[[i for i in f.index.tolist() if (feat_id in i)]].T
         metadata = f.loc[[i for i in f.index.tolist() if (not feat_id in i)]]
-        T_func = (self.pca if way == 'pca' else (self.mds if way == 'mds' else self.nmds)) if not self.args['boxplot'] else 'just_the_matrix'
+        T_func = (self.pca if way == 'pca' else (self.mds if way == 'mds' else self.nmds))\
+            if not any([self.args['boxplot'], self.args['avg_dist_from_centroid'], self.args['save_beta_diversity']])\
+            else 'just_the_matrix'
+
         if T_func != 'just_the_matrix':
             if T_func == self.pca: 
                 transformed, exp_var = T_func(data)
@@ -248,7 +301,19 @@ class beta_diversity(object):
     def beta_div(self):
         edt = self.edit_(self.stdin, self.args['sample_id'], self.args['feature_identifier'])
         transformed, metadata, exp_var = self.transformation(self.args['algorithm'], edt, self.args['feature_identifier'], self.args['distance'])
+    
+        #if self.args['save_beta_diversity'] and self.args['algorithm'] in ['mds','nmds']:
+        #    print transfod
         return transformed, metadata, exp_var
+
+ 
+   # def save_beta_matrix(self):
+   #      
+   #      self.transformation('mds')
+   #
+   #      edt = self.edit_(self.stdin, self.args['sample_id'], self.args['feature_identifier'])
+   #      beta_div = self.compute_distances(edt, self.args['distance'])
+   #      print beta_div
 
 
     def stack_sample_coordinates(self, distmat=None):
@@ -280,7 +345,7 @@ class beta_diversity(object):
 
         if not bool(ax):
             if not self.grads:
-                fig, ax = plt.subplots(figsize=(8,6))
+                fig, ax = plt.subplots(figsize=(8,(8 if self.args['squared_plot'] else 6))) #(8,6))
             else:
                 fig = plt.figure(figsize=(9,6)) 
                 gs = gridspec.GridSpec(1,2, width_ratios=[24,1])
@@ -316,7 +381,7 @@ class beta_diversity(object):
                     single_scatters = [sns.regplot(x='x1', y='x2', ax=ax, scatter=True, fit_reg=False\
                         , data=pd.DataFrame(data=self.sample_and_coordinates.loc[p].values.reshape([1,2])\
                         , columns=['x1','x2'], index=[p]), scatter_kws={'s': self.args['dot_size']} \
-                        , label='', marker='o', color=cmap(self.grads[p])) for p in present]
+                        , label='', marker=self.atts_of_sample[present[0]][2], color=cmap(self.grads[p])) for p in present]
                 else:
 
                     if self.args['gradient_only_for'] != c:
@@ -347,7 +412,7 @@ class beta_diversity(object):
                             , columns=['x1','x2'], index=[p]), scatter_kws={'s': self.args['dot_size']} \
                             , label='', marker='o', color=cmap(self.grads[p])) for p in present]
                     
-                sps = [spine.set_linewidth(0.5) for spine in ax.spines.itervalues()]
+                sps = [spine.set_linewidth(1.) for spine in ax.spines.itervalues()]
                 norm = matplotlib.colors.Normalize(vmin=min(self.grads.values()), vmax=max(self.grads.values()))   ##vmin=0.,vmax=1.)
                 cbar = matplotlib.colorbar.ColorbarBase(\
                     ax_cbar, cmap=self.args['cmap'], norm=norm, extend='neither'\
@@ -356,13 +421,13 @@ class beta_diversity(object):
                 #cbar.set_ticks(range(-3, 2, 1)) #[0.0, .25, .5, .75, 1.0])
                 #cbar.set_ticklabels(list(map(str, range(-3, 2, 1)))) #np.arange(min(self.grads.values()), max(self.grads.values()), 0.5)) ) )   #['.0', '.25', '.5', '.75', '1.0'])
                 ax_cbar.yaxis.set_ticks_position('left')
-                cbar.outline.set_linewidth(.5)
+                cbar.outline.set_linewidth(1.)
                 ax_cbar.set_ylabel(self.args['cbar_title'] if self.args['cbar_title'] else self.args['gradient_on'], size=10)
                 ax_cbar.tick_params(labelsize=10)
 
             if self.args['annot']:
                 for sample,x,y in zip(present_sample_frame.index.tolist(), present_sample_frame['x1'].tolist(), present_sample_frame['x2'].tolist()):	
-                    ax.annotate(sample, (float(x) - 0.02, float(y)), size=3)            
+                    ax.annotate(sample, (float(x) - 0.08, float(y)), size=3)            
 
         if bool(fig):
 
@@ -404,9 +469,9 @@ class beta_diversity(object):
     def box_plot(self):
        
         sns.set_style(self.args['facecolor'])  
-        for c in self.couples_by_class: self.couples_by_class[c], '   copro di mille balene'
 
-        print self.args['p_values_only_for']
+        #for c in self.couples_by_class: self.couples_by_class[c], '   copro di mille balene'
+        #print self.args['p_values_only_for']
 
         class box_plot_object(object):
             def __init__(self, class_, color_, cat_var_, couple_of_samples, dist_mat):
@@ -432,7 +497,7 @@ class beta_diversity(object):
 
         ax = sns.swarmplot(data=data, x='', y='Beta-Diversity'\
           , hue=None if len(list(set(data['group_by'].tolist())))==1 else 'group_by', dodge=True, s=2, color='black', alpha=1.)
-        ax = sns.boxplot(data=data, x='', y='Beta-Diversity'	
+        ax = sns.boxplot(data=data, x='', y='Beta-Diversity', linewidth=1.\
           , hue=None if len(list(set(data['group_by'].tolist())))==1 else 'group_by', palette=dict([(c[0], c[1]) for c in self.legend]))
 
         data.columns = ['class', 'color', 'group_by', 'Beta-Diversity']
@@ -498,8 +563,8 @@ class beta_diversity(object):
                  , [level, level + drop*0.5, level + drop*0.5, level] if self.args['p_values'] == 'above' \
                     else [level, level - drop*0.5, level - drop*0.5, level], lw=1., color='k')
                 
-                plt.text((self.indices[cup[0]]+self.indices[cup[1]])*0.5, level\
-                        ,'p. '+str(p_), ha='center', va='bottom', color='k', fontsize=3)
+                plt.text((self.indices[cup[0]]+self.indices[cup[1]])*0.5, (level if self.args['p_values'] == 'below' else level - drop)\
+                        ,'p. '+str(p_), ha='center', va='bottom', color='k', fontsize=5)
                 return p_
         return False
 
@@ -555,7 +620,7 @@ class beta_diversity(object):
             ax = sns.swarmplot(data=data_, x='', y=type_of_richness, hue=None if len(list(set(data['group_by'].tolist())))==1 else 'group_by'\
 	     , dodge=True, s=4, color='black', alpha=0.7)
             ax = sns.boxplot(data=data_, x='', y=type_of_richness, hue=None if len(list(set(data['group_by'].tolist())))==1 else 'group_by'\
-	     , palette=dict([(c[0], c[1]) for c in self.legend]))
+	     , palette=dict([(c[0], c[1]) for c in self.legend]), linewidth=1.)
 
             drop = data[type_of_richness].max()*0.02
             if self.args['p_values'] == 'above': H = data[type_of_richness].max() + drop
