@@ -57,10 +57,8 @@ class md(object):
     def sort_vector_column(self,column): self.f.loc[column] = [';'.join(sorted(values.split(';'))) for values in self.f.loc[column].tolist()]
 
     def capitalize_column(self, dataname, column): self.f.loc[column, self.f.loc['dataset_name'].isin([dataname])] = [c.upper() for c in self.f.loc[column, self.f.loc['dataset_name'].isin([dataname])]]
-    def lower_column(self, dataname, column): self.f.loc[column, self.f.loc['dataset_name'].isin([dataname])] = [c.lower() for c in self.f.loc[column, self.f.loc['dataset_name'].isin([datanam
-e])]]
-    def cast_column(self, dataname, column, datatype): self.f.loc[column, self.f.loc['dataset_name'].isin([dataname])] = list(map(datatype, self.f.loc[column, self.f.loc['dataset_name'].isin([datanam
-e])].tolist()))
+    def lower_column(self, dataname, column): self.f.loc[column, self.f.loc['dataset_name'].isin([dataname])] = [c.lower() for c in self.f.loc[column, self.f.loc['dataset_name'].isin([dataname])]]
+    def cast_column(self, dataname, column, datatype): self.f.loc[column, self.f.loc['dataset_name'].isin([dataname])] = list(map(datatype, self.f.loc[column, self.f.loc['dataset_name'].isin([dataname])].tolist()))
 
 
     def append_something_to_all(self, dataname, column, what, after=True):
@@ -221,29 +219,19 @@ e])].tolist()))
         print sample_per_tp_adult
 
 if __name__ == '__main__':
-  print 'ehiehiehie'
+  ## EXAMPLES: curation of the dataset BackhedF_2015
+  ##	       starting from a metadata table 'initial_backhed.csv'
 
-  # md = md('cMD_metadata.txt')
-  # md.print_duplicated_sample_table()
-  # md.get_report_strain_evolution()
+  md = md('initial_backhed.csv','BackhedF_2015')
+  md.insert_stats('BackhedF_2015')
+  md.add_ncbi_accession_no_sra('backhedf_2015_mapped.csv','BackhedF_2015')
+  #md.f = md.append_something_to_all('BackhedF_2015','sampleID',)
+  #md.f = md.append_something_to_all('BackhedF_2015','subjectID',)
 
-    #for data in ['BritoIL_2016','AsnicarF_2017']:
-    #    md.insert_stats(data)
-    #    md.save_curated_table(data)  
-    
-    #### DONE
-  #  for map_,data in zip(['loman_mapper.txt'],['LomanNJ_2013']):
-  #      md.add_accession_easyway(map_,data)
-  #      md.insert_stats(data)
-  #      md.save_curated_table(data)
-    #### DONE
-  #  for map_,data in zip(['karlsson_mapping.txt', 'yu_mapped.csv'], ['KarlssonFH_2013', 'YuJ_2015']):
-  #      md.correct_run_over_sra(map_, data)
-  #      md.insert_stats(data)
-  #      md.save_curated_table(data)
+  md.lower_column('BackhedF_2015','disease')
+  md.lower_column('BackhedF_2015','born_method')
+  md.cast_to_int('BackhedF_2015', 'infant_age')
+  md.cast_to_int('BackhedF_2015', 'days_from_first_collection')
+  md.add_curator('Valentina_Giunchiglia')##, 'BackhedF_2015')
+  md.save_curated_table('BackhedF_2015')
 
-    ## 'hmp_mapped.csv'    'HMP_2012'   
-  #
-    #for map_,data in zip(['tett_mapped.csv'],['TettAJ_2016']):
-    #    md.add_ncbi_accession_with_excep(map_,data)
-    #    md.save_curated_table(data)

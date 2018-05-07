@@ -153,6 +153,10 @@ class metadataset:
         add( '-wk', '--wilcoxon', type=str, default=None, help='--wilcoxon study_condition:CRC:control')
         add( '--bonferroni', action='store_true')
 
+        add('--mapped_number', action='store_true')
+        add('--mapped_percentage', action='store_true')
+
+
         # - OUTPUT SPECIFICS
         add( '-t', '--transpose', action='store_true', help='Output Has Field Names On Columns')
         add( '-b', '--both', action='store_true', help='Outputs Two Results, One Has Fields On Indexes The Other On Columns.')
@@ -204,7 +208,15 @@ class metadataset:
         if pp['transpose'] and pp['both']: pp['traspose'],pp['both'] = False,True
 
         return pp
+
+
+
+    #def get_percentage_of_reads_mapped(self):
+    #    for s in glob.glob('metaphlan2/*/*norm*.tsv'):
+    #        with open(s, 'r') as tor:
+    #            nn.append(float(tor.readlines()[-1].split()[-1]))
 	
+
 
     def handle_profile(self, sample, dataset_name):
 
@@ -231,6 +243,10 @@ class metadataset:
 
         if self.args['mirna'] and (not sample in self.args['exclude_samples']):
             self.profile_mirna.add(self.args['base_path']+dataset_name+'/'+self.args['mirna_folder']+sample+'/'+sample+self.args['mirna_title']+'.tsv')
+
+
+        #if self.args['reads_mapped'] and (not sample in self.args['exclude_samples']):
+        #    self.reads_mapped.append(self.args['base_path']+dataset_name+'/'+self.args['metaphlan_folder']+sample+'/'+sample+'_norm_reads.tsv')
 
             #self.numerator += 1 
             #print os.path.exists(self.args['base_path']+dataset_name+'/'+self.args['mirna_folder']+sample+'/'+sample+self.args['mirna_title']+'.tsv'), 'that ', self.numerator, '  exist'
@@ -306,10 +322,13 @@ class metadataset:
             return f if app else None
 
         #*******************************************************************
+
         selection = dict([(str(n+1),self.args['select'][n]) for n in range(len(self.args['select']))])
         f = pd.DataFrame()
+
         for i in range(len(self.args['select'])):
             n = str(i+1)
+
             if selection[n]:
                 tab = datasets(self.args['metadata_path'],self.args['dataset_input'][i],selection[n],'calling function dataset number '+str(n), False)
                 if self.args['columns'][i]: 
@@ -320,19 +339,23 @@ class metadataset:
                     self.handle_profile_direct_folder(sample, self.args['dataset_input'][i])
                 else:
                     self.handle_profile(sample, self.args['dataset_input'][i])
+
             if len(f) == 0: f = tab
             else:  f = f.append(tab) if (not tab is None) else f
+
 
         if self.args['randomize_controls']:  
             ### this block append a randomized controls
             ### from a big large dataset of controls
             act_samples = len(f.sampleID.tolist()) if not self.args['random_controls_multiple_of'] else self.args['random_controls_multiple_of']
+
             if len(f)==0:
                 f = datasets(self.args['metadata_path'],self.args['control_filename'],'select'+str(act_samples*int(self.args['proportions'][0]))+\
                 (':study_condition:control' if not self.args['control_conditions'] else self.args['control_conditions']),'calling function for controls',True)
             else:
                 f = f.append(datasets(self.args['metadata_path'],self.args['control_filename'],'select'+str(act_samples*int(self.args['proportions'][0]))+\
                 (':study_condition:control' if not self.args['control_conditions'] else self.args['control_conditions']),'calling function for controls',True))
+
 
         f = f.reset_index(drop=True)
 
@@ -394,6 +417,7 @@ class metadataset:
 
             df.index = [prev.split('_'+'complete' if 'complete' in prev else '_prof')[0] for prev in df.index.tolist()]
             return df
+
         #***********************#
 
         self.feat = []
@@ -411,9 +435,20 @@ class metadataset:
                 self.args['shrink'] = True
             self.merge_profiles(self.profile_species, 'species')
             pro = profile_('merged_profiles_species.csv')
+
           
-            if not self.args['yes_strain']: pro = pro[[t for t in pro.columns.tolist() if (self.args['taxon'] in t and (not 't__' in t))]] 
-            else: pro = pro[[t for t in pro.columns.tolist() if (self.args['taxon'] in t)]]
+            if (self.args['yes_strain'] and self.args['taxon'] == 's__'): 
+                pro = pro[[t for t in pro.columns.tolist() if (self.args['taxon'] in t and (not 't__' in t))]] 
+
+            else: 
+                #print [t for t in pro.columns.tolist() if (t.split('|')[-1].startswith(self.args['taxon']))]
+                if not self.args['mixed_taxa']:
+                    pro = pro[[t for t in pro.columns.tolist() if (t.split('|')[-1].startswith(self.args['taxon']))]]
+                else:
+                    pro = pro[[t for t in pro.columns.tolist() if (t.split('|')[-1][:3] in \
+                   (['k__','p__','c__','o__','f__','g__','s__'] \
+                    if not self.args['yes_strain'] else \
+                    ['k__','p__','c__','o__','f__','g__','s__','t__']))]]
 
             data = data.merge( shrink_taxa(pro) if self.args['shrink'] else pro, left_on='sampleID', right_index=True, how='left')
             self.feat += pro.columns.tolist()
@@ -466,6 +501,7 @@ class metadataset:
 
         if self.args['give_statistics'] and (not self.args['give_statistics'].startswith('rand')):
             statistics(data, self.args['give_statistics'].split(':') )
+
         if self.args['output_file'] and (os.path.exists(self.args['output_file'])): 
             os.remove(self.args['output_file'])
  
@@ -515,6 +551,24 @@ class metadataset:
             return xT
 
 
+
+        if bool(self.args['mapped_percentage']) or bool(self.args['mapped_number']):
+            mr, mrp = list(), list()
+            for ds,s,nr in zip(data['dataset_name'].tolist(), data['sampleID'].tolist(), data['number_reads'].tolist()):
+                with open(self.args['base_path']+ds+'/'+self.args['metaphlan_folder']+s+'/'+s+'_norm_reads.tsv') as tor:
+                    reads_mapped = float(tor.readlines()[-1].split()[-1])
+                mr.append(reads_mapped)                     
+                mrp.append((reads_mapped*100.)/float(nr))
+
+            try:            
+                data.insert(10, 'number_of_mapped_by_metaphlan2', mr)
+                data.insert(10, 'percentage_of_mapped_by_metaphlan2', mrp)
+            except IndexError:
+                data.insert(4, 'number_of_mapped_by_metaphlan2', mr)
+                data.insert(4, 'percentage_of_mapped_by_metaphlan2', mrp)
+
+
+
         if bool(self.args['feature_selection']):
             with open(self.args['feature_selection']) as fs:
                 data = data[self.metadata + [feat.rstrip() for feat in fs.readlines()]]
@@ -555,7 +609,7 @@ class metadataset:
                 #print data
                 
                 if not self.args['log_gradient']:
-                    grad = np.mean([data[gr].astype('float').tolist() for gr in self.args['grad']], axis=0)
+                    grad = np.sum([data[gr].astype('float').tolist() for gr in self.args['grad']], axis=0)
                 else:
 
                     log_and_inf = lambda xx : np.array([(-np.log(x) if bool(x) else 0.0) for x in xx], dtype=np.float64)
@@ -587,10 +641,10 @@ class metadataset:
                 #print [data[gr].astype('float').tolist() for gr in self.args['grad']]
                 #exit(1) 
    
-                if not self.args['log_gradient']:
-                    data[self.args['grad_col']] = (grad - np.min(grad)) / (np.max(grad) - np.min(grad)) #if not self.args['log_gradient'] else grad
-                else: 
-                    data[self.args['grad_col']] = grad
+                ########if not self.args['log_gradient']:
+                ########    data[self.args['grad_col']] = (grad - np.min(grad)) / (np.max(grad) - np.min(grad)) #if not self.args['log_gradient'] else grad
+                ########else: 
+                ########    data[self.args['grad_col']] = grad
 
                 #print data[self.args['grad_col']].tolist()
                 
@@ -607,7 +661,7 @@ class metadataset:
                 #    print f.rstrip() in data.columns.tolist()
                 
  
-                data = data[list(f.rstrip() for f in fts.readlines())]
+                data = data[[f.rstrip() for f in fts.readlines()]]
                 fts.close()
 
             #print ' sono uscio da suo if'
@@ -619,6 +673,8 @@ class metadataset:
                 data = data[self.args['feat_and_condition'] + self.feat] 
 
             if not self.args['output_file']: 
+
+
 
                 datat = data.T
                 for i in datat.index.tolist(): 

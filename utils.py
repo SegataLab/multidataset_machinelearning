@@ -136,6 +136,7 @@ class usefullfuncs(object):
         return dict([(source, self._auc(self.get_transfer_resultnames([source, source], db, algo, test, grid0, grid1, grid2), start)[1]) for source in self.datasets])
 
 
+
 class effect_size(object):
 
     def __init__(self, e, n, c, p):
@@ -145,19 +146,26 @@ class effect_size(object):
         self.pv = p
 
 
+
 class lefse_reader(object):
 
     def __init__(self, lefse_output):
          self.to_read = lefse_output
          self.data = list()
          self.classes_ = set()
+         ##self.howmany = howmany
 
 
     def select_highest(self, howmany=5):
         feats = list()
         for c in self.classes_:
-            feats += [feat[1] for feat in sorted([(d.esize, d.name) for d in self.data if d.cl==c]\
-                , key = lambda obj : obj[0], reverse=True)][:howmany]
+
+            if howmany > 0:
+                feats += [feat[1] for feat in sorted([(d.esize, d.name) for d in self.data if d.cl==c]\
+                    , key = lambda obj : obj[0], reverse=True)][:howmany]
+            else:
+                feats += [feat[1] for feat in sorted([(d.esize, d.name) for d in self.data if d.cl==c]\
+                    , key = lambda obj : obj[0], reverse=True)]
 
             #print ' inside: ', feats
             #exit(1)
@@ -180,6 +188,8 @@ class lefse_reader(object):
                     self.classes_.add(class_)
 
 
+
+
 class project_color_code(object):
 
     def __init__(self, project_name):
@@ -187,8 +197,10 @@ class project_color_code(object):
         if project_name == 'periimplantitis':
             self.color_code = dict([(cat,cl) for cat,cl in zip(\
                 ['healthy', 'peri-implantitis', 'mucositis']\
-              , ['green', 'red', 'darkgrey']\
+              , ['green', 'red', 'deepskyblue']\
                )])
+
+        
 
 
 
