@@ -1,50 +1,15 @@
 # Scope and Requirements #
 
-## This repo provides:
+## This repo provides a series of script for Data-Driven Whole-Genome-Shotgun (WGS) Metagenomics, in particular:
 
-* Programs for an extensive machine learning meta-analyses (based on metagenomic profile data) including figures. 
-* An easy frame-work for alpha & beta diversities and ordination plots.
+* 1 program allowing the download of a dataset from NCBI.
+* 2 programs for speed up the boring procedure of writing in Bash a whole Machine-Learning (ML) meta-analyses based on several WGS datasets (all or part of them, maybe, just downloaded with the above named program).  
+* 4 programs producing figures relative to the different aspect of the ML analyses conducted with the above program (the indeed become quite detailed).
+* 3 programs devoted to the basic part of a standard WGS analyses, including the generation of figures such as: any type of ordination plot (literally), beta-diversity box-plots, alpha diversity boxplots.
+* 1 program plotting the correlation between an index and the distance from the centroid of a class in the data.
 
-### Machine Learning Meta-Analysis:
+### ALL the listed programs can be quite tricky to run if never done before, 'cos a detailed documentaion is still lacking: for any necessity fell free to write at paolomanghi1974@gmail.com.
 
-* Consider having 3 datasets named data_a, data_b, data_c. For any, you have provided a metadata table.
-* There are a couple of database possibile. For now consider the most basic, Metaphlan2.
-* The ** step 1 ** is to compile a list of command lines
-
-```  
-python run.py crc --define study_condition:CRC:control -ds ZellerG_2014 YuJ_2015 FengQ_2015 VogtmannE_2016 CM_rescignocrc CM_lilt HanniganGD_2017 -db metaphlan -do cross_figures -g0 nt:500 -g1 nsl:5 -g2 c:entropy
-```
-
-```
-to write the lines for the progressive plot:
-        python run.py crc --define study_condition:CRC:control --datasets ZellerG_2014 YuJ_2015 FengQ_2015 VogtmannE_2016 CM_rescignocrc CM_lilt HanniganGD_2017 -db metaphlan -al rf -do support_study -g0 nt:500 -g1 nsl:5 -g2 c:entropy
-    to plot the progressive training:
-        python run.py crc --define study_condition:CRC:control --datasets ZellerG_2014 YuJ_2015 FengQ_2015 VogtmannE_2016 CM_rescignocrc CM_lilt HanniganGD_2017 -al rf -do support_plot
-    to plot a feature importance heatmap:
-        python run.py crc --define study_condition:CRC:control --datasets ZellerG_2014 YuJ_2015 FengQ_2015 VogtmannE_2016 CM_rescignocrc CM_lilt HanniganGD_2017 -al rf -do heat_map
-    to write down the standard analyses:
-	python run.py crc --define study_condition:CRC:control -ds ZellerG_2014 YuJ_2015 FengQ_2015 VogtmannE_2016 CM_rescignocrc CM_lilt HanniganGD_2017 -db genefamilies -al rf -do cross_study -g0 c:gini -g1 nsl:1 -g2 df -hv 0 -ncores 1 -mf auto -r 1
-
-
-```
-
-
-
-
-
-
-
-
-### A comprehensive machine learning meta-analyses based on a meta-dataset like the one mentioned above ###
-
-*
-* 
-* 
-* 
-
-* Downloading and curating public 
-* Version
-* [Learn Markdown](https://bitbucket.org/tutorials/markdowndemo)
 
 ### How do I get set up? ###
 
