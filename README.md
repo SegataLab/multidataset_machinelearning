@@ -32,11 +32,11 @@ hg clone https://<USER>@bitbucket.org/CibioCM/cmdpy
 
 ```
 
-cmdpy repo contains the tool cmdpy_dataset.py which is used to merge quantitative profiles with metadata
-metaml repo contains the tool classification_thomas-manghi.py which is needed to run the main analysis
+- cmdpy repo contains the tool cmdpy_dataset.py which is used to merge quantitative profiles with metadata
+- metaml repo contains the tool classification_thomas-manghi.py which is needed to run the main analysis
 
-###### NOTE: these figures have been create from a server in which I'm also maintaining the curatedMetagenomicDataset package
-###### that means that is conceived as an architecture with the following tree-shape:
+#### NOTE: these figures have been create from a server in which I'm also maintaining the curatedMetagenomicDataset package
+#### that means that is conceived as an architecture with the following tree-shape:
 
 - /base_folder
 - /base_folder/dataset_name(e.g. FengQ_2015)
@@ -47,10 +47,8 @@ metaml repo contains the tool classification_thomas-manghi.py which is needed to
 - /base_folder/dataset_name/metaphlan2/sample_#1_name/sample_#1_name_profile.tsv
 - /base_folder/dataset_name/metaphlan2/sample_#1_name/sample_#2_name_profile.tsv
 
-##### once the architecture is set (that means also
-##### having dataset-based folders, metadata table and metaphlan2 profiles)
-##### the first step is to proceed to the dataset generation (ML == starting datasets)
-##### THEREFORE, in order to generate the datasets: do
+##### once the architecture is set (that means also having dataset-based folders, metadata table and metaphlan2 profiles)
+##### the first step is to proceed to the dataset generation (ML == starting datasets) THEREFORE, in order to generate the datasets: do
 
     ```
 	python run.py crc --define study_condition:CRC:control \
@@ -60,7 +58,7 @@ metaml repo contains the tool classification_thomas-manghi.py which is needed to
 			-g0 nt:500 -g1 nsl:5 -g2 c:entropy
 	```
 
-###### if run without errors, you should be able to see in the folder you run it to files.sh:
+##### if run without errors, you should be able to see in the folder you run it to files.sh:
 
     ```
 	ls
@@ -70,8 +68,8 @@ metaml repo contains the tool classification_thomas-manghi.py which is needed to
 	lodo_metaphlan_study_condition:CRC:control_rf_gridterm0:nt_500_gridterm1:nsl_5_gridterm2:c_entropy.sh
 	```
 
-###### these .sh are wrappers for all the analysis needed
-###### IF YOU INSTALLED THE CMDPY AND METAML REPOS YOU SHOULD BE ABLE TO RUN THESE COMMANDS IN THE ORDER LISTED
+##### these .sh are wrappers for all the analysis needed
+##### IF YOU INSTALLED THE CMDPY AND METAML REPOS YOU SHOULD BE ABLE TO RUN THESE COMMANDS IN THE ORDER LISTED
 
 ### Once the analysis have run, in order to generate the figures you might run:
 
