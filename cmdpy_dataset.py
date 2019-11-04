@@ -171,6 +171,10 @@ class metadataset:
         add( '--grad_col', type=str, default='Bug-Complex-Abundance')
         add( '--log_gradient', action='store_true')
 
+        add( '--feature_dictionary', type=str, default=None)
+
+        #add( '--centroids')
+
 
         pp = vars(p.parse_args())
         if (not pp['metaphlan']) and (not pp['pwyrelab']) and (not pp['genefam']) and (not pp['mirna']) and\
@@ -606,48 +610,48 @@ class metadataset:
 
             if bool(self.args['grad']):
 
-                #print data
-                
                 if not self.args['log_gradient']:
                     grad = np.sum([data[gr].astype('float').tolist() for gr in self.args['grad']], axis=0)
                 else:
 
                     log_and_inf = lambda xx : np.array([(-np.log(x) if bool(x) else 0.0) for x in xx], dtype=np.float64)
 
-                    #print (np.mean([data[gr].astype('float').tolist() for gr in self.args['grad']], axis=0))
-                    ###print np.nan_to_num(np.log(np.mean([data[gr].astype('float').tolist() for gr in self.args['grad']], axis=0)))
-
-                    #print [n for n in (-np.nan_to_num(np.log(np.mean(\
-                    #        [data[gr].astype('float').tolist() for gr in self.args['grad']], axis=0)))*10)], ' WOOOW'
-                    #exit(1)
-                     ####    np.nan_to_num
-                    ######################grad = [n for n in (-np.nan_to_num(log_inf(
-
-                    #print self.args['grad']
-
-                    #exit(1)
                     grad = -log_and_inf(np.mean([np.array(data[gr].astype('float').tolist(), dtype=np.float64)*0.01 for gr in self.args['grad']], axis=0))
 
-                    #grad = np.array(map(int, [n for n in (-np.nan_to_num(np.log(np.mean(\
-                    #       [data[gr].astype('float').tolist() for gr in self.args['grad']], axis=0)))*10)]), dtype=np.int64)
-                    #for g in grad: 
-                    #    print type(g), np.isfinite(g), g
-                    #print grad, ' appena definito'
-                    ##### exit(1)
+                if not self.args['log_gradient']:
+                    data[self.args['grad_col']] = (grad - np.min(grad)) / (np.max(grad) - np.min(grad)) #if not self.args['log_gradient'] else grad
+                else: 
+                    data[self.args['grad_col']] = grad
 
-                #print grad, '  qui ci siamo....'
-                #print grad.shape
 
-                #print [data[gr].astype('float').tolist() for gr in self.args['grad']]
-                #exit(1) 
-   
-                ########if not self.args['log_gradient']:
-                ########    data[self.args['grad_col']] = (grad - np.min(grad)) / (np.max(grad) - np.min(grad)) #if not self.args['log_gradient'] else grad
-                ########else: 
-                ########    data[self.args['grad_col']] = grad
+            if self.args['feature_dictionary']:
 
-                #print data[self.args['grad_col']].tolist()
-                
+                feat_set = set(self.feat)
+
+                with open(self.args['feature_dictionary']) as fd:
+                    ftd = dict([( l.rstrip().split()[0]\
+                    , ' '.join(l.rstrip().split()[1:])\
+                    ) for l in fd.readlines()])
+
+                data.columns = [(f if (not f in self.feat) else (ftd[f] if f in ftd else (ftd[f[:-4]]))\
+			.replace(' ','-')\
+			.replace('(','-')\
+			.replace(')','-')\
+			.replace(',','-')\
+			.replace('.','-')\
+			.replace('[','-')\
+			.replace(']','-').replace(';','-').replace('&','-')\
+			.replace('/','-')) for f in data.columns.tolist()]
+                self.feat = [(ftd[f] if f in ftd else (ftd[f[:-4]]))\
+			.replace(' ','-')\
+			.replace('(','-')\
+			.replace(')','-')\
+			.replace(',','-')\
+			.replace('.','-')\
+			.replace('[','-')\
+			.replace(']','-').replace(';','-').replace('&','-')\
+			.replace('/','-') for f in self.feat]
+
 
             if self.args['select_columns']:
                 data = data[self.args['select_columns']]
@@ -655,16 +659,10 @@ class metadataset:
             if self.args['select_columns_from_file']:
                 fts = open(self.args['select_columns_from_file'], 'r')
 
-                #with open(self.args['select_columns_from_file'], 'r') as fts:
-                     #print [feat.rstrip() for feat in fts.readlines()], ' ma che avra di strano...'
-               # for f in fts:
-                #    print f.rstrip() in data.columns.tolist()
-                
- 
+                #print data.columns.tolist()
+
                 data = data[[f.rstrip() for f in fts.readlines()]]
                 fts.close()
-
-            #print ' sono uscio da suo if'
 
             if self.args['feat_only']:
                 data = data[['sampleID'] + self.feat]
@@ -672,19 +670,25 @@ class metadataset:
             elif len(self.args['feat_and_condition']) > 0:
                 data = data[self.args['feat_and_condition'] + self.feat] 
 
+
+            #feat_set = set(self.feat)
+            #if self.args['feature_dictionary']:
+            #    with open(self.args['feature_dictionary']) as fd:
+            #        ftd = dict([( l.rstrip().split()[0]\
+            #        , ' '.join(l.rstrip().split()[1:])\
+            #        ) for l in fd.readlines()])
+            #    data.columns = [(f if (not f in self.feat) else (ftd[f] if f in ftd else (ftd[f[:-4]])).replace(' ','-')) for f in data.columns.tolist()]
+
+
             if not self.args['output_file']: 
-
-
 
                 datat = data.T
                 for i in datat.index.tolist(): 
-
                     print '\t'.join([i]+list(map(str, datat.loc[i])))
 
             else:
 
                 if self.args['transpose']:
-
                     data.to_csv(self.args['output_file'].split('.')[0]+'_Headers.csv',sep='\t',header=True,index=False)
 
                 elif self.args['both']:

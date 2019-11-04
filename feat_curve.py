@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+
 import numpy as np
 import matplotlib
 matplotlib.use('Agg')
@@ -12,8 +13,8 @@ matplotlib.rcParams['svg.fonttype'] = 'none'
 import itertools
 
 
-
 ## python run.py crc --define study_condition:CRC:control -ds ZellerG_2014 YuJ_2015 FengQ_2015 VogtmannE_2016 CM_rescignocrc CM_lilt HanniganGD_2017 -db metaphlan -do feat_curve -g0 c:entropy -g1 nt:1000 -g2 nsl:5
+
 ## python run.py crc --define study_condition:CRC:control -ds ZellerG_2014 YuJ_2015 FengQ_2015 VogtmannE_2016 CM_rescignocrc CM_lilt HanniganGD_2017 -db genefamilies -do feat_curve -g0 nsl:5 -g1 nt:1000 -g2 SEL
 
 ## python run.py crc --define study_condition:CRC:control -ds ZellerG_2014 YuJ_2015 FengQ_2015 VogtmannE_2016 CM_rescignocrc CM_lilt HanniganGD_2017 -db genefamilies -do feat_curve -g0 c:entropy -g1 nt:1000 -g2 special
@@ -25,22 +26,22 @@ import itertools
 
 class feat_curve(object):
 
-    save_folder = '../Images/'
+    #save_folder = '../Images/'
 
 
-    def __init__(self, title, datasets, db, defined_problem, algo, grid0, grid1, grid2, fig_fmt):
+    def __init__(self, title, datasets, db, defined_problem, algo, grid0, grid1, grid2, fig_fmt, path):
 
-        sns.set(style='white')
-        self.utils = utils.usefullfuncs(datasets)
+        sns.set(style='whitegrid')  #'white')
+        self.save_folder = (path + ('/' if (not path.endswith('/')) else '') + 'Images/') if path else '../Images/'
+        self.utils = utils.usefullfuncs(datasets, path)
         self.datasets = datasets
         self.db = db
         self.title = title
         self.problem = defined_problem.split(':')
         self.tests = [':'.join(self.problem), ':'.join([self.problem[0],self.problem[1]]),':'.join([self.problem[0],self.problem[2]])]
 
-        self.lodo = True
+        self.lodo = False
         self.include_cross_validation = True
-
         self.algo = algo
         self.grid0 = grid0
         self.grid1 = grid1
@@ -105,8 +106,8 @@ class feat_curve(object):
         #plt.suptitle(' Metaphlan Signature Scores ' + ('in Cross-Validation' if not self.lodo else 'in LODO'))
         #plt.subplots_adjust(bottom=0.2, left=0.4)
         #plt.savefig('%sFeature_CurveNUMBERS_%s_%s.%s' %(self.save_folder, self.db[0]\
-        #          , 'inCrossValidation' if not self.lodo else 'inLODO', self.fig_fmt)\
-        #          , dpi=400, facecolor='w', frameon=False, edgecolor='w')
+        #    , 'inCrossValidation' if not self.lodo else 'inLODO', self.fig_fmt)\
+        #    , dpi=400, facecolor='w', frameon=False, edgecolor='w')
 
         largest = np.array([datat['all'].tolist() for i in range(datat.values.shape[1])], dtype=np.float64).T 
         diff = pd.DataFrame(columns=datat.columns.tolist(), index=datat.index.tolist(), data=(largest - datat.values)*1.)
@@ -129,13 +130,14 @@ class feat_curve(object):
         #sns.heatmap(data=datat, ax=axb, annot=True, cmap='hot', cbar=True, annot_kws={'fontsize': 3}, square=True)
         #axb.tick_params(labelsize=4)
 
+
         #plt.suptitle(' Gene-Families Signature Scores ' + ('in Cross-Validation' if not self.lodo else 'in LODO'))
         #plt.subplots_adjust(bottom=0.2, left=0.4)
         #plt.savefig('%sFeature_CurveNUMBERS_%s_%s.%s' %(self.save_folder, self.db[0]\
         #          , 'inCrossValidation' if not self.lodo else 'inLODO', self.fig_fmt)\
         #          , dpi=400, facecolor='w', frameon=False, edgecolor='w')
-
  
+
         largest = np.array([datat['8192'].tolist() for i in range(datat.values.shape[1])], dtype=np.float64).T
         diff = pd.DataFrame(columns=datat.columns.tolist(), index=datat.index.tolist(), data=(largest - datat.values)*1.)
         #print diff
@@ -175,8 +177,10 @@ class feat_curve(object):
             , [l[1] for l in self.lodo_curves[data]]) for data in self.index ])
         
         self.datasets = [(data if data not in self.utils.data_aliases else self.utils.data_aliases[data]) for data in self.datasets]
-        self.plottable_data = dict([(d, [np.array(self.lodo_scores[d], dtype=np.float64)]) for d in self.datasets + (['Cross-Validation'] if self.include_cross_validation else [])])
+        self.plottable_data = dict([(d, [np.array(self.lodo_scores[d] if self.lodo else self.scores[d], \
+		dtype=np.float64)]) for d in self.datasets + (['Cross-Validation'] if self.include_cross_validation else [])])
         self.cross_validation = True
+
         #self.lodo = True
         self.num_thresholds = 7 
         self.x_ticks = ['2','4','8','16','32','64','all']
@@ -199,6 +203,8 @@ class feat_curve(object):
 
     def do_the_plot(self):
 
+        sns.set(style='ticks')
+
         scatter, times = [], []
         fig, ax_ = plt.subplots(figsize=(5,4)) 
 
@@ -212,7 +218,9 @@ class feat_curve(object):
         ax_.set_xlim(-0.2, self.num_thresholds - 0.8)
         ax_.xaxis.set_ticks(range(self.num_thresholds))
         ax_.set_xticklabels(self.x_ticks, fontsize=4)
-        ax_.yaxis.set_ticks(np.arange(0.5, 1., 0.1))
+        ax_.yaxis.set_ticks(np.arange(0.5, 1.0, 0.1))
+
+        #ax_.set_ylim(0.5,1.0)
 
         ax_.set_yticklabels(list(map(str, np.arange(0.5, 1., 0.1))), fontsize=4)
         ax_.set_ylabel('AUC', fontsize=4)
@@ -263,4 +271,4 @@ class feat_curve(object):
 
 if __name__ == '__main__':
 
-    print 'aaaaaaaaaaaarrrrrrgggghhhh!!'
+    print('aaaaaaaaaaaarrrrrrgggghhhh!!')

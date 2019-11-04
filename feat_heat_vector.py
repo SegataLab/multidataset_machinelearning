@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -20,28 +19,21 @@ from scipy.spatial import distance
 from scipy.cluster import hierarchy
 import subprocess
 
+## python run.py crc --define study_condition:CRC:control --datasets ZellerG_2014 YuJ_2015 FengQ_2015 VogtmannE_2016 CM_rescignocrc CM_lilt HanniganGD_2017 -al rf -do heat_map_vector -db metaphlan -g0 c:entropy -g1 nt:1000 -g2 nsl:5 -cm RdYlBu_r -nif 5 -fmt svg
 
-## python run.py crc --define study_condition:CRC:control --datasets FengQ_2015 ZellerG_2014 CM_rescignocrc YuJ_2015 CM_lilt VogtmannE_2016 HanniganGD_2017 -al rf -do heat_map -db metaphlan -g0 c:entropy -g1 nt:1000 -g2 nsl:5 -cm RdYlBu_r -nif 5
-
-## python run.py crc --define study_condition:CRC:control --datasets FengQ_2015 ZellerG_2014 CM_rescignocrc YuJ_2015 CM_lilt VogtmannE_2016 HanniganGD_2017 -al rf -do heat_map -db pathways -g0 nt:1000 -g1 nsl:5 -g2 c:entropy -nif 5
-
-#yes
-
-class feature_heatmap(object):
+class feature_heatmap_vector(object):
 
     dataselect = '/python ../../cmdpy/datasetSelection2.py'
-    #save_fig = '../Images'
+    save_fig = '../Images'
     getfeatnumber = {10:13, 20:24, 30:35, 40:46, 50:57, 60:68} 
 
 
-    def __init__(self, datasets, db, defined_problem, algo, grid0, grid1, grid2, which_python, n_imp_feat, lodo, char_size_hm, fig_fmt, path):  ##, path='/CM/data/meta/'):
-
+    def __init__(self, datasets, db, defined_problem, algo, grid0, grid1, grid2, which_python, n_imp_feat, lodo, char_size_hm, cmap, fig_fmt, path='/CM/data/meta/'):
         self.n_imp_feat = n_imp_feat		
-        self.save_folder = (path + ('/' if (not path.endswith('/')) else '') + 'Images/') if path else '../Images/'
         self.char_size_hm = char_size_hm	
         self.lodo = lodo
         self.which_python = which_python	
-        self.utils = utils.usefullfuncs(datasets, path)
+        self.utils = utils.usefullfuncs(datasets, mixed_taxa=False)
         self.path = path
         self.datasets = datasets
         self.db = db
@@ -50,14 +42,11 @@ class feature_heatmap(object):
         self.grid0 = grid0
         self.grid1 = grid1
         self.grid2 = grid2        
- 
-        self.complete_ranking = '/scratchCM/users/paolo.manghi/crc_nat_med/whole_analysis_again/Fig_Four/ml/global_rank_metaphlan.txt'
- 
-        #self.complete_ranking = '../ml/resultofcrossvalidation_ANYonANY_features:metaphlan_experimenttype:study_condition:CRC:control_rf_grid0:%s_grid1:%s_grid2:%s_FEATURE_RANKING.txt' \
-	#	%(self.grid0, self.grid1, self.grid2)
-        #print 'ths is your reference \n ', self.complete_ranking
+        self.complete_ranking = '../ml/resultofcrossvalidation_ANYonANY_features:metaphlan_experimenttype:study_condition:CRC:control_rf_grid0:%s_grid1:%s_grid2:%s.txt' % (self.grid0, self.grid1, self.grid2)
 
-        ###self.cmap = cmap
+        print 'ths is your reference \n ', self.complete_ranking
+
+        self.cmap = cmap
         self.fig_fmt = fig_fmt
         self.segregate_features = True   	
         self.problem = defined_problem.split(':')
@@ -69,7 +58,7 @@ class feature_heatmap(object):
         self.metadata = self.read_metadata().T
         self.phylogenetic_mapper = dict()
         self.most_relevant_features = list()
-        self.rename_spp = lambda s_ : s_.replace('unclassified','spp.') if s_.endswith('unclassified') else s_
+        self.rename_spp = lambda s_ : s_.replace('unclassified','ssp.') if s_.endswith('unclassified') else s_
         self.frames = self.concat_frames(lodo) 	## all the features taken fromt eh random forest result
         self.signs_ = self.signs()       
         self.data = self.datamatrix()
@@ -89,20 +78,23 @@ class feature_heatmap(object):
         self.data_comparison_cold.set_index([[k.replace('_',' ') for k in self.data_comparison_cold.index.tolist()]], inplace=True)
 
         self.linkage = hierarchy.linkage(distance.pdist(self.data.T, metric='braycurtis'), method='average')
-        ## scipy.cluster.hierarchy
-
         fg,ax_hc = plt.subplots(1,1)
         sns.set_style('white')
         hierarchy.set_link_color_palette(['m', 'c', 'y', 'k'])
         hc = hierarchy.dendrogram(self.linkage, ax=ax_hc, above_threshold_color='b', orientation='top')
         hierarchy.set_link_color_palette(None)
+
+        new_order_zero = [self.datasets[i] for i in hc['leaves']]
         new_order = [ds if (not ds in self.utils.data_aliases) else self.utils.data_aliases[ds] for ds in [self.datasets[i] for i in hc['leaves']]]
         self.data_hot = self.data_hot[new_order]
         self.data_cold = self.data_cold[new_order]
+ 
+        cross_scores = [  self.utils.transfer_([dat,dat], self.db, self.algo, self.tests[0], self.grid0, self.grid1, self.grid2, 2, changed_coordinates=new_order_zero) for dat in new_order_zero]
+        self.data_cross_validations = pd.DataFrame(dict([(dset,[auc[0]]) for auc,dset in zip(cross_scores, new_order)]))
+        self.data_cross_validations = self.data_cross_validations[new_order]  ##.apply(lambda f : ['%.2f'%ff for ff in f], axis=1)[new_order]
+        
+        self.data_global_cross = pd.DataFrame({'Cross-Validation': [self.utils.cross_validation_(self.db, self.algo, self.tests[0], self.grid0, self.grid1, self.grid2, 2)[0]]})
         self.annotate = True
-
-        #print self.data['HanniganGD_2017']
-        ##exit(1)
 
         self.heatmap_clustering(new_order, color='warm')
 
@@ -115,12 +107,12 @@ class feature_heatmap(object):
 
 
     def heatmap_clustering(self, sorted_data, color='warm'): 
-
         vmin_, vmax_ = self.mid_point, 1.
         norm_ = matplotlib.colors.Normalize(self.mid_point, 1)
+        norm_auc = matplotlib.colors.Normalize(0.5, 1.0)
         revnorm = matplotlib.colors.Normalize(1, self.mid_point)
         fig = plt.figure(figsize=(9,14))   ##(9,14))
-        gs = gridspec.GridSpec(3,3, width_ratios=[10,1,1], height_ratios=[2,10,7]) ## changed 8 in 7
+        gs = gridspec.GridSpec(4,3, width_ratios=[10,1,1], height_ratios=[2,10,8,1])
 
         self.ax_hclus = plt.subplot(gs[0, 0])
         self.ax_hot = plt.subplot(gs[1, 0])
@@ -131,39 +123,49 @@ class feature_heatmap(object):
         self.ax_cbar_cold = plt.subplot(gs[2, 2])
         self.ax_hclus.axis('off')
 
+        self.ax_cv_vector = plt.subplot(gs[-1, 0]) ## vector downside
+        self.ax_global = plt.subplot(gs[-1, 1])  ## slot global cross validation
+        self.ax_cv_cbar = plt.subplot(gs[-1, 2]) ## vector colorbar
+
         #self.ax_hot.axis('off')
         #self.ax_cold.axis('off')
         #self.ax_cbar_hot.axis('off')
         #self.ax_cbar_cold.axis('off')
 
         clus = hierarchy.dendrogram(self.linkage, ax=self.ax_hclus, above_threshold_color='b', orientation='top')
-        cbar_hot = matplotlib.colorbar.ColorbarBase(self.ax_cbar_hot, cmap='YlOrRd', norm=revnorm, extend='min')
+        cbar_hot = matplotlib.colorbar.ColorbarBase(self.ax_cbar_hot, cmap='YlOrBr', norm=revnorm, extend='min')
         cbar_cold = matplotlib.colorbar.ColorbarBase(self.ax_cbar_cold, cmap='Blues_r', norm=norm_, extend='max', ticks=range(1,15,3))
+        cbar_cv = matplotlib.colorbar.ColorbarBase(self.ax_cv_cbar, cmap='hot', norm=norm_auc, extend='min', extendfrac=0.4, ticks=[])
+        #self.ax_cv_cbar.set_xlabel('0.5 - 1.0')
+        #for d in dir(cbar_cv): print d
 
-        self.data_hot_annotable = self.data_hot.apply(lambda f : [(('%i' %ff) if ff < 1000 else '' ) for ff in f], axis=1).values    
-
-	### YlOrBr in YlOrRd
-        ### Blues in PuBu
+        self.data_hot_annotable = self.data_hot.apply(lambda f : [(('%i' %ff) if ff < 1000 else '' ) for ff in f], axis=1).values
 
         hm_hot = sns.heatmap(self.data_hot, annot=self.data_hot_annotable if self.annotate else False, ax=self.ax_hot, fmt='s'\
-                , vmin=1, vmax=self.mid_point, cmap='YlOrRd_r', cbar=False, xticklabels=[], yticklabels=self.data_hot.index.tolist())
+                , vmin=1, vmax=self.mid_point, cmap='YlOrBr_r', cbar=False, xticklabels=[], yticklabels=self.data_hot.index.tolist())
         hm_cold = sns.heatmap(self.data_cold, annot=True if self.annotate else False, ax=self.ax_cold, fmt='g'\
-                , vmin=1, vmax=self.mid_point, cmap='Blues_r', cbar=False, xticklabels=sorted_data, yticklabels=self.data_cold.index.tolist())
-        
+                , vmin=1, vmax=self.mid_point, cmap='Blues_r', cbar=False, xticklabels=[], yticklabels=self.data_cold.index.tolist())
         hm_comp_hot = sns.heatmap(self.data_comparison_hot, annot=True if self.annotate else False, ax=self.ax_comparison_hot, fmt='g'\
-                , vmin=1, vmax=self.mid_point, cmap='YlOrRd_r', cbar=False, xticklabels=[], yticklabels=[])
+                , vmin=1, vmax=self.mid_point, cmap='YlOrBr_r', cbar=False, xticklabels=[], yticklabels=[])
         hm_comp_cold = sns.heatmap(self.data_comparison_cold, annot=True if self.annotate else False, ax=self.ax_comparison_cold, fmt='g'\
-                , vmin=1, vmax=self.mid_point, cmap='Blues_r', cbar=False, xticklabels=['Global Ranking'], yticklabels=[])
+                , vmin=1, vmax=self.mid_point, cmap='Blues_r', cbar=False, xticklabels=[], yticklabels=[])
 
+        cv_vec = sns.heatmap(self.data_cross_validations, annot=True, ax=self.ax_cv_vector, fmt='.2f', vmin=0.5, vmax=1.0, cmap='hot', cbar=False, xticklabels=sorted_data, yticklabels=['AUC'])
+        cv_slot = sns.heatmap(self.data_global_cross, annot=True, ax=self.ax_global, fmt='.2f', vmin=0.5, vmax=1.0, cmap='hot', cbar=False, xticklabels=['Cross-Validation'], yticklabels=[])
         for lab in self.ax_hot.get_yticklabels(): lab.set_style('italic')
         for lab in self.ax_cold.get_yticklabels(): lab.set_style('italic')
+
         cbar_hot.set_ticks((np.linspace(self.mid_point, 1, num=len(self.pos), endpoint=True, dtype=np.int64)))
         cbar_hot.set_ticklabels(list(map(str, (np.linspace(1, self.mid_point, num=len(self.pos), endpoint=True, dtype=np.int64)))))
         cbar_cold.set_ticks((np.linspace(1, self.mid_point, num=len(self.neg), endpoint=True, dtype=np.int64)))
         ##cbar_cold.set_ticklabels()
         ##self.ax_cbar_hot.set_ylabel('Feature Importance Rank', size=16)
+        self.ax_cv_cbar.set_xlabel('0.5 - 1.0', rotation=70, ha='center')
+
         self.ax_cbar_hot.yaxis.set_ticks_position('right')
         self.ax_cbar_cold.yaxis.set_label_position('right')
+        self.ax_cv_cbar.yaxis.set_label_position('right')
+        self.ax_comparison_cold.xaxis.set_label_position('top')
         plt.subplots_adjust(bottom=0.13, left=0.4)
 
         pos_hclust = self.ax_hclus.get_position()
@@ -173,14 +175,20 @@ class feature_heatmap(object):
         pos_ccold = self.ax_cbar_cold.get_position()
         pos_comp_hot = self.ax_comparison_hot.get_position()
         pos_comp_cold = self.ax_comparison_cold.get_position()
+        pos_vector = self.ax_cv_vector.get_position()
+        pos_vector_cbar = self.ax_cv_cbar.get_position()
+        pos_cross = self.ax_global.get_position()
 
-        pos_hclust2 = [pos_hclust.x0, pos_hclust.y0 - 0.06, pos_hclust.width, pos_hclust.height]
-        pos_hot2 = [pos_hot.x0, pos_hot.y0 - 0.03, pos_hot.width, pos_hot.height]
+        pos_hclust2 = [pos_hclust.x0, pos_hclust.y0 - 0.04, pos_hclust.width, pos_hclust.height]
+        pos_hot2 = [pos_hot.x0, pos_hot.y0 - 0.02, pos_hot.width, pos_hot.height]
         pos_cold2 = [pos_cold.x0, pos_cold.y0, pos_cold.width, pos_cold.height]
-        pos_chot2 = [pos_chot.x0, pos_chot.y0 - 0.03, pos_chot.width, pos_chot.height]
+        pos_chot2 = [pos_chot.x0, pos_chot.y0 - 0.02, pos_chot.width, pos_chot.height]
         pos_ccold2 = [pos_ccold.x0, pos_ccold.y0, pos_ccold.width, pos_ccold.height]     
-        pos_comp_hot2 = [pos_comp_hot.x0, pos_comp_hot.y0 - 0.03, pos_comp_hot.width, pos_comp_hot.height]
-        pos_comp_cold2 = [pos_comp_cold.x0, pos_comp_cold.y0, pos_comp_cold.width, pos_comp_cold.height]
+        pos_comp_hot2 = [pos_comp_hot.x0, pos_comp_hot.y0 - 0.02, pos_comp_hot.width * 1.25, pos_comp_hot.height]
+        pos_comp_cold2 = [pos_comp_cold.x0, pos_comp_cold.y0, pos_comp_cold.width * 1.25, pos_comp_cold.height]
+        pos_vector2 = [pos_vector.x0, pos_vector.y0 + 0.02, pos_vector.width, pos_vector.height]
+        pos_vector_cbar2 = [pos_vector_cbar.x0, pos_vector_cbar.y0 + 0.02, pos_vector_cbar.width, pos_vector_cbar.height]
+        pos_cross2 = [pos_cross.x0, pos_cross.y0 + 0.02, pos_cross.width * 1.25, pos_cross.height]
 
         self.ax_hclus.set_position(pos_hclust2)
         self.ax_hot.set_position(pos_hot2)
@@ -189,15 +197,20 @@ class feature_heatmap(object):
         self.ax_cbar_cold.set_position(pos_ccold2)
         self.ax_comparison_hot.set_position(pos_comp_hot2)
         self.ax_comparison_cold.set_position(pos_comp_cold2)
+        self.ax_cv_vector.set_position(pos_vector2)
+        self.ax_cv_cbar.set_position(pos_vector_cbar2)
+        self.ax_global.set_position(pos_cross2)
 
-        plt.setp(self.ax_cold.get_xticklabels(), rotation=70, ha='right')
-        plt.setp(self.ax_comparison_cold.get_xticklabels(), rotation=70, ha='right')
+        #plt.setp(self.ax_cold.get_xticklabels(), rotation=70, ha='right')
+        plt.setp(self.ax_cv_vector.get_xticklabels(), rotation=70, ha='right')
+        plt.setp(self.ax_comparison_cold.get_xticklabels(), rotation=70, ha='left')
+        plt.setp(self.ax_global.get_xticklabels(), rotation=70, ha='right')
+        plt.setp(self.ax_cv_vector.get_yticklabels(), rotation=0)
+        ##plt.setp(self.ax_cv_cbar.get_xticklabels(), rotation=70, ha='right')
+
         plt.suptitle('Random Forest Feature Ranking')
-
-        if self.db == 'metaphlan': 
-            plt.savefig('%s/FeatureHeatmap_%s.%s' %(self.save_folder, color if not self.lodo else color+'_lodo', self.fig_fmt), dpi=600)
-        elif self.db == 'pathways':
-            plt.savefig('%s/PathwaysHeatmap_%s.%s' %(self.save_folder, color, self.fig_fmt), dpi=600)
+        if self.db == 'metaphlan': plt.savefig('%s/FeatureHeatmapWithVector_%s.%s' %(self.save_fig, color if not self.lodo else color+'_lodo', self.fig_fmt), dpi=600)
+        elif self.db == 'pathways': plt.savefig('%s/PathwaysHeatmapWithVector_%s.%s' %(self.save_fig, color, self.fig_fmt), dpi=600)
 
 
 
@@ -214,14 +227,6 @@ class feature_heatmap(object):
 
 
 
-    def compute_CV_vector(self):
-        scores = [self.utils.transfer_([ds,ds], self.db, self.algo, self.tests[0], self.grid, self.feat\
-		, 2 if self.n_imp_feat not in self.getfeatnumber else self.getfePuButnumber[self.n_imp_feat])[0] for i,ds in enumerate(self.datasets)]
-        return scores + [self.utils.cross_validation_(self.db, self.algo, self.tests[0], self.grid, self.feat\
-		, 2 if self.n_imp_feat not in self.getfeatnumber else self.getfeatnumber[self.n_imp_feat])]
-
-
-
     def define_comparison(self):
         c = self.features_(False, False, line='line', skip=0, filename=True)
         if self.db == 'metaphlan': c = c.set_index([[self.rename_spp(i[3:]) for i in c.index.tolist()]]) 
@@ -231,7 +236,6 @@ class feature_heatmap(object):
 
 
     def datamatrix(self):
-
         f = self.frames
         for piece in f: self.most_relevant_features += piece.index.tolist()[:self.n_imp_feat]
 
@@ -242,10 +246,10 @@ class feature_heatmap(object):
 
         for r in red[1:]: f = f.join(r, how='outer')
         f = f.fillna(1000).astype('int')
-        f['sum'] = f.apply(lambda R: np.sum([r for r in R if r!= 1000]), axis=1)
+        #f['sum'] = f.apply(lambda R: np.sum([r for r in R if r!= 1000]), axis=1)
         #f = f.sort_values('sum', ascending=True, axis=0)
+        #del f['sum']
 
-        del f['sum']
         self.neg = [el[0] for el in sorted([(ft, np.sum(f.loc[ft, :].tolist())) \
 		for ft in f.index.tolist() if self.signs_[ft] < 0.], key=lambda el : el[1], reverse=True)]
         self.pos = [el[0] for el in sorted([(ft, np.sum(f.loc[ft, :].tolist())) \
@@ -314,25 +318,17 @@ class feature_heatmap(object):
 
 
     def read_metadata(self):
-
         command = [self.which_python+self.dataselect]+[ds+'.'+self.tests[0] for ds in self.datasets]
-
         if isinstance(self.db, list):
             for dab in self.db: command += ['--'+self.utils.databases[dab]]
-
         elif isinstance(self.db, str):
             command += ['--'+self.utils.databases[self.db]]
-        command += ['-of /scratchCM/users/paolo.manghi/crc_nat_med/whole_analysis_again/Fig_Four/complete_metadata_'+('_'.join(self.db) if isinstance(self.db, list) else self.db)+'.csv']
+        command += ['-of ./complete_metadata_'+('_'.join(self.db) if isinstance(self.db, list) else self.db)+'.csv']
         #if os.path.exists('complete_metadata_'+('_'.join(self.db) if isinstance(self.db, list) else self.db)+'.csv'): pass
         #else: sp.call(' '.join(command), shell=True)
-
-        return pd.read_csv('/scratchCM/users/paolo.manghi/crc_nat_med/whole_analysis_again/Fig_Four/data/data_for_global_rank_metaphlan.csv'\
-		, sep='\t', header=None, index_col=0, low_memory=False)
-
-#\		+('_'.join(self.db) if isinstance(self.db, list) else self.db)+'.csv', sep='\t', header=None, index_col=0, low_memory=False)        
+        return pd.read_csv('complete_metadata_'+('_'.join(self.db) if isinstance(self.db, list) else self.db)+'.csv', sep='\t', header=None, index_col=0, low_memory=False)        
 
 
 
 if __name__=='__main__':
-
-    print ('aruuh! aruuuh!')
+    print 'aruuh! aruuuh!'
