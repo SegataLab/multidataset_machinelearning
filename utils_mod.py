@@ -3,6 +3,10 @@
 # grid0, grid1, grid2 are terms present in the various file names
 # for parameters to be tuned.
 
+import os
+import subprocess
+
+
 class usefullfuncs(object):
     #result_folder = '../ml/'
 
@@ -15,50 +19,41 @@ class usefullfuncs(object):
 		['metaphlan','pathways','genefamilies','markers','pfam']\
 	      , ['metaphlan','pwyrelab','genefam','markpres','pfam'])])
 
+
     def __init__(self, datasets, path, mixed_taxa=False):
         self.datasets = datasets        
 
-        self.res_fold = '../ml/' if (not path ) else path + ('/' if (not path.endswith('/')) else '') + 'ml/'
+        self.res_fold = '../ml/' if (not path ) else path + ('/' if (not path.endswith('/')) else '')
         self.features = dict([(data,feat) for data,feat in zip(\
                 ['metaphlan','pfam','genefamilies','pathways','markers']\
               , [('s__' if not mixed_taxa else 'k__'),'PF','UniRef90','PWY','MK'])])
 
+        def call_call(str_):
+            if os.path.exists(str_): return str_
+            else:
+                print ' '.join(['cp', self.old_path + str_[len(self.res_fold):], self.res_fold])
+                subprocess.call(['cp', self.old_path + str_[len(self.res_fold):], self.res_fold]) 
 
-        ## std number (YOU MUST ALSO ADD CTR VS Adenoma and CRC VS Adenoma)
-        #self.sample_number = {'CM_lilt': 53., 'CM_rescignocrc': 60.\
-	#		, 'ZellerG_2014': 114., 'YuJ_2015': 128.\
-	#		, 'FengQ_2015': 107., 'VogtmannE_2016': 104.\
-	#		, 'WirbelJ_2018': 125., 'HanniganGD_2017': 55.}
+        self.old_path = '/scratchCM/users/paolo.manghi/metamlan/ml/'
+        self.seek_and_copy = lambda str_ : str_ if os.path.exists(str_) else call_call(str_)
 
-
-        ### CRC - Adenoma
-        #self.sample_number = {'CM_lilt': 56, 'CM_rescignocrc': 'NA'\
-        #                    , 'ZellerG_2014': 95., 'YuJ_2015': 'NA'\
-        #                    , 'FengQ_2015': 93., 'VogtmannE_2016': 'NA'\
-        #                    , 'WirbelJ_2018': 'NA', 'HanniganGD_2017': 54.}
-
-        ### Adenoma - Controls
-        self.sample_number = {'CM_lilt': 51., 'CM_rescignocrc': 'NA'\
-                            , 'ZellerG_2014': 103., 'YuJ_2015': 'NA'\
-                            , 'FengQ_2015': 108., 'VogtmannE_2016': 'NA'\
-                            , 'WirbelJ_2018': 'NA', 'HanniganGD_2017': 55.}
-
-
-
+	#	else subprocess.call(['cp', self.old_path + str_[len(self.res_fold):], self.res_fold])
+   
         #self.problem = defined_problem.split(':')
         #self.tests = [':'.join(self.problem), ':'.join([self.problem[0], self.problem[1]]), ':'.join([self.problem[0], self.problem[2]])]
 
+
     def _auc(self, result, start, crossv=False):
-        #print 'RESLTS ==> ', result
+        if not os.path.exists(result):
+            return 0, 0, 0
 
         with open(result) as r:
             for s in range(start):
                 line = r.readline()
                 if s==0:
-                    print(line, ' questa e la linea che crasha ')
-                    n_samples = int(float(line.strip().split()[1]))
+                    n_samples = int(line.split()[1])
             if crossv:
-                n_features = int(float(line.rstrip().split()[1]))
+                n_features = int(line.rstrip().split()[1])
             else:
                 n_features = 'x'
             while line[0]!='auc':
@@ -67,7 +62,6 @@ class usefullfuncs(object):
                 return float(line[1]), n_samples
             else:
                 return float(line[1]), n_features, n_samples
-
 
     def all_auc(self, result):
         #print 'PARSING RESULT NAMED: ', result
@@ -92,40 +86,22 @@ class usefullfuncs(object):
     def isonedata(self, s): return True if s[0]==s[1] else False
 
     def get_lodo_resultnames(self, leftdataset, database, algo, test, grid0, grid1, grid2):
-        #print '\n == READING A LODO == \n'
-
         return self.res_fold+'resultoflodo_ANYon_'+leftdataset+'_features:'+('_'.join(database) if isinstance(database, list) else database)\
 	      +'_experimenttype:'+test+'_'+algo+'_grid0:'+grid0+'_grid1:'+grid1+'_grid2:'+grid2+'.txt'
-
-        ## resultoflodo_ANYon_ZellerG_2014_features:metaphlan_experimenttype:rf_study_condition:CRC:control_grid0:nt:1000_grid1:nsl:5_grid2:c:entropy.txt
 
         ### ml/resultoflodo_ANYon_ZellerG_2014_features:genefamilies_experimenttype:standard_rf_grid0:c:gini_grid1:nsl:5_grid2:df
 
     def get_transfer_resultnames(self, pool_of_datasets, db, algo, test, grid0, grid1, grid2):
-
-        #print '\n == READING A tranfers (CROSS VALIDATION ? == > )', pool_of_datasets[0]==pool_of_datasets[1], test, ' E il test.... '
-        #print 'TRASNFER: ', test, ' e il fottuto test'
-
-        return self.res_fold+'resultoftransfer_'+'_ON_'.join(pool_of_datasets)+'_features:'+('_'.join(db) if isinstance(db, list) else db)\
-	      +'_experimenttype:'+test+'_'+algo+'_grid0:'+grid0+'_grid1:'+grid1+'_grid2:'+grid2+'.txt'
-
+        return self.seek_and_copy( self.res_fold+'resultoftransfer_'+'_ON_'.join(pool_of_datasets)+'_features:'+('_'.join(db) if isinstance(db, list) else db)\
+	      +'_experimenttype:'+test+'_'+algo+'_grid0:'+grid0+'_grid1:'+grid1+'_grid2:'+grid2+'.txt' )
 
     def get_cross_validation(self, database, algo, test, grid0, grid1, grid2):
-        #print self.res_fold+'resultofcrossvalidation_ANYonANY_features:'+('_'.join(database) if isinstance(database, list) else database)\
-        #      +'_experimenttype:'+test+'_'+algo+'_grid0:'+grid0+'_grid1:'+grid1+'_grid2:'+grid2+'.txt'
-
-        return self.res_fold+'resultofcrossvalidation_ANYonANY_features:'+('_'.join(database) if isinstance(database, list) else database)\
-              +'_experimenttype:'+test+'_'+algo+'_grid0:'+grid0+'_grid1:'+grid1+'_grid2:'+grid2+'.txt'
-
-        ##ml/resultofcrossvalidation_ANYonANY_features\:metaphlan_experimenttype\:study_condition\:CRC\:control_rf_grid0\:nt\:1000_grid1\:nsl\:5_grid2\:c\:entropy.txt
+        return self.seek_and_copy( self.res_fold+'resultofcrossvalidation_ANYonANY_features:'+('_'.join(database) if isinstance(database, list) else database)\
+              +'_experimenttype:'+test+'_'+algo+'_grid0:'+grid0+'_grid1:'+grid1+'_grid2:'+grid2+'.txt' )
 
         ### resultofcrossvalidation_ANYonANY_features:metaphlan_experimenttype:standard_rf_grid0:nt:500_grid1:nsl:5_grid2:c:entropy
 
     def get_onlyone_batch_resultname(self, pool_of_datasets, db, algo, test_word, grid0, grid1, grid2):
-        
-        #print self.res_fold+'resultofbatch_'+'_ON_'.join(pool_of_datasets)+'_features:'+('_'.join(db) if isinstance(db, list) else db)\
-        #      +'_experimenttype:batch_on_'+test_word+'_'+algo+'_grid0:'+grid0+'_grid1:'+grid1+'_grid2:'+grid2+'.txt'
-     
         return self.res_fold+'resultofbatch_'+'_ON_'.join(pool_of_datasets)+'_features:'+('_'.join(db) if isinstance(db, list) else db)\
 	      +'_experimenttype:batch_on_'+test_word+'_'+algo+'_grid0:'+grid0+'_grid1:'+grid1+'_grid2:'+grid2+'.txt'
 
@@ -169,22 +145,14 @@ class usefullfuncs(object):
         return self._auc(self.get_cross_validation(db, algo, test, grid0, grid1, grid2), start, True)
 
     def get_all_trans_for_one(self, db, algo, test, grid0, grid1, grid2, dataset_on_which):
-        #print 'A TEST cE : ', test
         return self.res_fold+'resultoftransfer_*'+'_ON_'+dataset_on_which+'_features:'+('_'.join(db) if isinstance(db, list) else db)\
 		+'_experimenttype:'+test+'_'+algo+'_grid0:'+grid0+'_grid1:'+grid1+'_grid2:'+grid2+'.txt'
-
- 
-    #### resultoftransfer_ZellerG_2014_ON_ZellerG_2014_features:metaphlan_experimenttype:rf_study_condition:CRC:control_grid0:nt:1000_grid1:nsl:5_grid2:c:entropy.txt'
 
     def get_std_support_pattern(self, db, problem, grid0, grid1, grid2, dataset_on_which, training_level):
         return self.res_fold+'plotresult_ANYon_'+dataset_on_which+'_features:'+(db if isinstance(db, str) else '_'.join(db)) \
                 + '_experimenttype:aucimprove_traininglevel:'+str(training_level)+'_unId:*'+'_'+problem+'_grid0:'+grid0+'_grid1:'+grid1+'_grid2:'+grid2+'.txt'
 
-    def test_magns(self, db, test, algo, grid0, grid1, grid2, start):
-
-        #for source in self.datasets:
-        #   print self.get_transfer_resultnames([source, source], db, algo, test, grid0, grid1, grid2)
-
+    def test_magns(self, db, algo, test, grid0, grid1, grid2, start):
         return dict([(source, self._auc(self.get_transfer_resultnames([source, source], db, algo, test, grid0, grid1, grid2), start)[1]) for source in self.datasets])
 
 
@@ -201,14 +169,13 @@ class effect_size(object):
 
 class lefse_reader(object):
 
- 
-    def __init__(self, lefse_output, only_sign, dictionary=False, with_codes=True, underscore_to_dash=False):
+
+    def __init__(self, lefse_output, dictionary=False, with_codes=True, underscore_to_dash=False):
 
          self.to_read = lefse_output
          self.data = list()
          self.classes_ = set()
  
-         self.only_sign = only_sign
          self.dictionary = dictionary
          self.with_codes = with_codes
          self.underscore_to_dash = underscore_to_dash
@@ -251,18 +218,12 @@ class lefse_reader(object):
 
     def get(self):
 
-        print('CAREFULL!!', end=',')
-
         line = True
 
         with open(self.to_read) as ip:
             while line:
 
                 line = ip.readline().rstrip().split()
-                sign = 0.05 if self.only_sign else 1.0
-
-                print(sign, ' THIS IS ISGN FORM UTILS')
-
                 if len(line) == 5:
                     feat = str(line[0]) if not line[0].startswith('s__') else str(line[0][3:])
                      
@@ -270,35 +231,33 @@ class lefse_reader(object):
                     pvalue = float(line[-1])
                     e_size = float(line[1])
 
-                    if pvalue < sign:
- 
-                        if self.underscore_to_dash:
-                            feat = feat.replace('_','-')
+                    if self.underscore_to_dash:
+                        feat = feat.replace('_','-')
 
-                        if not isinstance( self.dictionary, dict ):
-                            feat = feat
-                        else:
-                            if not self.with_codes:
-                                feat = self.dictionary[feat]
+                    if not isinstance( self.dictionary, dict ):
+                        feat = feat
+                    else:
+                        if not self.with_codes:
+                            feat = self.dictionary[feat]
                      
+                        else:
+                            if not self.underscore_to_dash:
+                                feat = ':'.join( [ feat, self.dictionary[ feat ] ] )
                             else:
-                                if not self.underscore_to_dash:
-                                    feat = ':'.join( [ feat, self.dictionary[ feat ] ] )
-                                else:
-                                    try: feat = ':'.join( [ feat, self.dictionary[ feat ] ] )
+                                try: feat = ':'.join( [ feat, self.dictionary[ feat ] ] )
 
-                                    except KeyError: feat = ':'.join( [ feat[:-4], self.dictionary[ feat[:-4] ] ] )
+                                except KeyError: feat = ':'.join( [ feat[:-4], self.dictionary[ feat[:-4] ] ] )
                             
 
-                        if feat.startswith('UniRef90'): 
-                            feat = feat[9:]
+                    if feat.startswith('UniRef90'): 
+                        feat = feat[9:]
                          
 
         #print feat, type(feat), ' questa e la feat'
                     #print class_, ' questa e class_'
                     #print pvalue, ' questo e il p value'
 
-                        self.data.append( effect_size( e_size, feat, class_, pvalue ) )
+                    self.data.append( effect_size( e_size, feat, class_, pvalue ) )
 
                     #exit(1)
                     #self.data.append( effect_size( \
@@ -307,7 +266,7 @@ class lefse_reader(object):
 
 
         #else self.dictionary[feat.replace('_','-')])), class_, pvalue))
-                        self.classes_.add(class_)
+                    self.classes_.add(class_)
 
         #print self.data, ' EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE'
         #exit(1)
@@ -321,7 +280,7 @@ class project_color_code(object):
         if project_name == 'periimplantitis':
             self.color_code = dict([(cat,cl) for cat,cl in zip(\
                 ['healthy', 'peri-implantitis', 'mucositis']\
-              , ['green', 'red', 'royalblue']\
+              , ['green', 'red', 'deepskyblue']\
                )])
 
         
@@ -329,4 +288,4 @@ class project_color_code(object):
 
 
 if __name__ == '__main__':
-    print ('morditi il culo!, for parameters to be tuned. passa parola')
+    print 'morditi il culo!, for parameters to be tuned. passa parola'
