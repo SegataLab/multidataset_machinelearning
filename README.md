@@ -1,45 +1,36 @@
-# Contact statement: since this tutorial is still in progress, please for any needing feel free to get in touch with me at paolomanghi1974@gmail.com # 
+## Contact statement: since this tutorial is still in progress, please for any needing feel free to get in touch with me at paolomanghi1974@gmail.com
 
-# Where you are #
+## Where you are?
+This repo provides a series of script for Data-Driven Whole-Genome-Shotgun (WGS) Metagenomics, in particular, it allows the generation of figures relative to the Machine-Learning analysis in the paper: "Metagenomic analysis of colorectal cancer datasets identifies cross-cohort microbial diagnostic signatures and a link with choline degradation."
 
-## This repo provides a series of script for Data-Driven Whole-Genome-Shotgun (WGS) Metagenomics, in particular
-## it allows the generation of figures relative to the Machine-Learning analysis in the paper: "Metagenomic analysis of colorectal cancer datasets identifies cross-cohort microbial diagnostic signatures and a link with choline degradation."
-
-# What does this repo actually contain # 
-
+## What does this repo actually contain?
 * 1 program allowing the download of a dataset from NCBI.
 * 2 programs for speed up the boring procedure of writing in Bash a whole Machine-Learning (ML) meta-analyses based on several WGS datasets (all or part of them, maybe, just downloaded with the above named program).  
 * 3 programs producing figures relative to the different aspect of the ML analyses conducted with the above program (the indeed become quite detailed).
 * 4 programs devoted to the basic part of a standard WGS analyses, including the generation of figures such as: any type of ordination plot (literally), beta-diversity box-plots, alpha diversity boxplots.
 
 ## Getting Started step n.1
-
 To clone the present repo:
-
 ```
 hg clone https://<USER>@bitbucket.org/CibioCM/multidataset_machinelearning
 ```
-
 The analysis listed here are mainly dovoted to generate the figures of the paper. Can be applied in a similar fashions to other series of
 datasets/other classification problems.
 
-###### NOTE: they are THEY ARE BASED ON TWO OTHER PUBLIC REPOS: cmdpy and metaml.
-
+## NOTE: they are THEY ARE BASED ON TWO OTHER PUBLIC REPOS: cmdpy and metaml. You need to clone them in order to run the analysis!
 To clone cmdpy and metaml repos:
-
 ```
 hg clone https://<USER>@bitbucket.org/CibioCM/metaml
 hg clone https://<USER>@bitbucket.org/CibioCM/cmdpy
 
 ```
-
 - cmdpy repo contains the tool cmdpy_dataset.py which is used to merge quantitative profiles with metadata
 - metaml repo contains the tool classification_thomas-manghi.py which is needed to run the main analysis
 
 ## Getting Started step n.2
 
-#### NOTE: these figures have been create from a server in which I'm also maintaining the curatedMetagenomicDataset package
-#### that means that is conceived as an architecture with the following tree-shape:
+#### NOTE: these figures have been create from a server in which I'm also maintaining the curatedMetagenomicDataset package!
+#### unfortunately, that means that is conceived as an architecture with the following tree-shape:
 
 - /base_folder
 - /base_folder/dataset_name(e.g. FengQ_2015)
@@ -95,12 +86,12 @@ from utils import usefullfuncs ## utilities
 import argparse as ap
 import sys
 
-BASE_PYTHON=''
+BASE_PYTHON='/shares/CIBIO-Storage/CM/scratch/users/paolo.manghi/anaconda3/bin/'
 
 def read_params(args):
 ```
 
-please, change BASE_PYTHON from /shares/CIBIO-Storage/CM/scratch/users/paolo.manghi/anaconda3/bin/" to "/YOUR/FOVOURITE/PYTHON.3/bin/"
+please, change BASE_PYTHON from "/shares/CIBIO-Storage/CM/scratch/users/paolo.manghi/anaconda3/bin/" to "/YOUR/FOVOURITE/PYTHON.3/bin/"
 and exit
 
 ```
