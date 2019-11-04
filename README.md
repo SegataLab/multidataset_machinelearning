@@ -190,7 +190,8 @@ which, in the present case should look like:
 
 ![FeatureHeatmap_warm2.png]
 
-(https://bitbucket.org/repo/p4MR7K5/images/558990500-FeatureHeatmap_warm2.png)
+![FeatureHeatmap_warm2.png]
+(https://bitbucket.org/repo/p4MR7K5/images/1280546409-FeatureHeatmap_warm2.png)
 
 ### How do I get set up? ###
 
