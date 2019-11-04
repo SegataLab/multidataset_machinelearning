@@ -163,7 +163,8 @@ If you manage to run this command without errors, you should now have generated 
 ```
 MachineLearning_crc_metaphlan_all_features.png
 ```
-which, in the present case should look like: (https://bitbucket.org/repo/p4MR7K5/images/4213842841-MachineLearning_crc_metaphlan_all_features2.png)
+which, in the present case should look like: ![MachineLearning_crc_metaphlan_all_features2.png](https://bitbucket.org/repo/p4MR7K5/images/355154465-MachineLearning_crc_metaphlan_all_features2.png)
+
 
 * Figure 3 panel a:
 ** This analysis consist in a feature-ranking of 7 cross-validation
