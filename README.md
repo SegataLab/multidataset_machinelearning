@@ -142,11 +142,10 @@ For errors, please refer to paolomanghi1974@gmail.com
 ##### IF YOU INSTALLED THE CMDPY AND METAML REPOS YOU SHOULD BE ABLE TO RUN THESE COMMANDS IN THE ORDER LISTED
 
 ### Once the analysis have run, in order to generate the figures you might run:
-
-	* figure 2 panel a:
-	
-	** This analysis consist of a cross prediction matrix consisting of 
-	** n. datasets * n. datasets tests + n. datasets Leave-One-Dataset-Out predictions
+ 
+* figure 2 panel a:
+** This analysis consist of a cross prediction matrix consisting of 
+** n. datasets * n. datasets tests + n. datasets Leave-One-Dataset-Out predictions
 
 	```
     python run.py crc --define study_condition:CRC:control \
@@ -158,10 +157,18 @@ For errors, please refer to paolomanghi1974@gmail.com
 		--path Fig_Cross_Prediction/	
 	
 	```
-	* Figure 3 panel a:
-	** This analysis consist in a feature-ranking of 7 cross-validation
-	*** Therefore the step n. 1 is to perform these cross-validation
-	
+
+If you manage to run this command without errors, you should now have generated a figure named
+
+```
+MachineLearning_crc_metaphlan_all_features.png
+```
+which, in the present case should look like: (https://bitbucket.org/repo/p4MR7K5/images/4213842841-MachineLearning_crc_metaphlan_all_features2.png)
+
+* Figure 3 panel a:
+** This analysis consist in a feature-ranking of 7 cross-validation
+*** Therefore the step n. 1 is to perform these cross-validation
+		
 	```
 	python run.py crc \
 			--define study_condition:CRC:control \
@@ -175,7 +182,14 @@ For errors, please refer to paolomanghi1974@gmail.com
 	
 	```
 
+If you manage to run this analysis without errors, you should be able to see file named:
+```
+FeatureHeatmap_warm.png
+```
 
+which, in the present case should look like:
+
+![FeatureHeatmap_warm2.png](https://bitbucket.org/repo/p4MR7K5/images/558990500-FeatureHeatmap_warm2.png)
 
 ### How do I get set up? ###
 
