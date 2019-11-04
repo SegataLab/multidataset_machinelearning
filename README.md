@@ -9,17 +9,34 @@
 * 5 program plotting the correlation between an index and the distance from the centroid of a class in the data.
 
 ### ALL the listed programs can be quite tricky to run if never done before, 'cos a detailed documentaion is still lacking: for any necessity fell free to write at paolomanghi1974@gmail.com.
+## generation of figures relative to the Machine-Learning analysis in the paper: "Metagenomic analysis of colorectal cancer datasets identifies cross-cohort microbial diagnostic signatures and a link with choline degradation." 
 
-### The analysis listed here are mainly dovoted to generate the figures of the paper. Can be applied in a similar fasions to other series of
-### datasets / other problems.
-### HOWEVER THEY ARE BASED ON TWO OTHER PUBLIC REPOS: cmdpy and metaml.
-### THEREFORE, BEFORE YOU START YOU SHOULD CLONE THESE TWO REPOS.
+## Getting Started
 
-generation of figures relative to the Machine-Learning analysis in the paper: 
-"Metagenomic analysis of colorectal cancer datasets identifies cross-cohort microbial diagnostic signatures and a link with choline degradation." 
- 
-##### these figures have been made ina  server from which I'm also maintaining the curatedMetagenomicDataset
-##### that mesan that is conceived as an architecture with the following tree-shape:
+To clone the present repo:
+
+```
+hg clone https://<USER>@bitbucket.org/CibioCM/multidataset_machinelearning
+```
+
+The analysis listed here are mainly dovoted to generate the figures of the paper. Can be applied in a similar fashions to other series of
+datasets/other classification problems.
+
+###### NOTE: they are THEY ARE BASED ON TWO OTHER PUBLIC REPOS: cmdpy and metaml.
+
+To clone cmdpy and metaml repos:
+
+```
+hg clone https://<USER>@bitbucket.org/CibioCM/metaml
+hg clone https://<USER>@bitbucket.org/CibioCM/cmdpy
+
+```
+
+cmdpy repo contains the tool cmdpy_dataset.py which is used to merge quantitative profiles with metadata
+metaml repo contains the tool classification_thomas-manghi.py which is needed to run the main analysis
+
+###### NOTE: these figures have been create from a server in which I'm also maintaining the curatedMetagenomicDataset package
+###### that means that is conceived as an architecture with the following tree-shape:
 
 |__/base_folder
 |
