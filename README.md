@@ -201,8 +201,6 @@ press ESC, then type:
 ```
 
 * Figure 3 panel a:
-** This analysis consist in a feature-ranking of 7 cross-validation
-*** Therefore the step n. 1 is to perform these cross-validation
 		
 ```
 python run.py crc \
