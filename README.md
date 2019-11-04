@@ -21,18 +21,14 @@ generation of figures relative to the Machine-Learning analysis in the paper:
 ##### these figures have been made ina  server from which I'm also maintaining the curatedMetagenomicDataset
 ##### that mesan that is conceived as an architecture with the following tree-shape:
 
-|__/base_folder
-|
-|__/base_folder/dataset_name(e.g. FengQ_2015)
-|
-|__/base_folder/dataset_name/dataset_name_metadata.tsv
-|__/base_folder/dataset_name/metaphlan2
-|
-|__/base_folder/dataset_name/metaphlan2/sample_#1_name/
-|__/base_folder/dataset_name/metaphlan2/sample_#2_name/
-|
-|__/base_folder/dataset_name/metaphlan2/sample_#1_name/sample_#1_name_profile.tsv
-|__/base_folder/dataset_name/metaphlan2/sample_#1_name/sample_#2_name_profile.tsv
+__/base_folder
+__/base_folder/dataset_name(e.g. FengQ_2015)
+__/base_folder/dataset_name/dataset_name_metadata.tsv
+__/base_folder/dataset_name/metaphlan2
+__/base_folder/dataset_name/metaphlan2/sample_#1_name/
+__/base_folder/dataset_name/metaphlan2/sample_#2_name/
+__/base_folder/dataset_name/metaphlan2/sample_#1_name/sample_#1_name_profile.tsv
+__/base_folder/dataset_name/metaphlan2/sample_#1_name/sample_#2_name_profile.tsv
 
 ##### once the architecture is set (that means also
 ##### having dataset-based folders, metadata table and metaphlan2 profiles)
