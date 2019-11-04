@@ -1,10 +1,13 @@
 #!/usr/bin/env python
 
 #  USAGE EXAMPLES: 
+
 #  python cmdpy_dataset.py CM_periimplantitis.study_condition:peri-implantitis,col:color:crimson,col:shape:o,col:define:periimplantitis CM_periimplantitis.study_condition:control,col:color:blue,col:shape:o,col:define:control --shrink | python cmdpy_betadiversity.py -a mds -sc coords.txt -of pi_plot 
 
-## b) python cmdpy_dataset.py CM_periimplantitis.study_condition:mucositis,col:color:black,col:shape:o,col:define:mucositis CM_periimplantitis.study_condition:peri-implantitis,col:color:blue,col:shape:o,col:define:periimplantitis CM_periimplantitis.study_condition:healthy,col:color:green,col:shape:o,col:define:healthy --taxon g__ | python cmdpy_betadiversity.py -avgd mettiqua_latua_betadiversity -of general_trial_output
+## b) python cmdpy_dataset.py CM_periimplantitis.study_condition:mucositis,col:color:black,col:shape:o,col:define:mucositis CM_periimplantitis.study_condition:peri-implantitis,col:color:blue,col:shape:o,col:define:periimplantitis CM_periimplantitis.study_condition:healthy,col:color:green,col:shape:o,col:define:healthy --taxon g__ | python cmdpy_betadiversity.py -avgd mettiqua_latua_betadiversity -of general_trial_output -z g__
+
 ## meaningof of b): call dataset with three classe belonging to CM_perimolnatitis data: periimplantitis, mucositis, heathy: each has a shape, a color and a definition. The selected taxon is genus (g__). No other specification means: metaphlan feature types and metadata attached. This table is passed to betadiversities. The selected operattion is avgd, that means saving on a file a dataframe with, for any sample, the average beta diversity from any class 
+
 
 
 import argparse as ap
@@ -27,19 +30,14 @@ matplotlib.rcParams['svg.fonttype'] = 'none'
 from scipy import stats
 
 
+
 class beta_diversity(object):
 
-    #def put_significance(self):
-    #    for i in range(1, len(self.distributions)):
-    #        x, y = self.distributions[i], self.distributions[i-1]
 
     def __init__(self, params=None):
 
-        #def they_overlap(pos_a1, pos_a2, pos_b1, pos_b2):
-        #    second_pos = pos_b2 if (pos_b2 > pos_a2) else pos_a2
         self.is_a_comb = lambda c, _l_ : bool(c in _l_) 
         self.they_overlap = lambda pos_a1, pos_a2, pos_b1, pos_b2 : bool( min([pos_a2, pos_b2]) - max([pos_a1, pos_b1]) )
-
 
         if not isinstance(params, dict):  self.args = self.read_params(sys.argv)
         else: self.args = params
@@ -55,14 +53,37 @@ class beta_diversity(object):
         else: self.grads = None
         self.subjects = dict([(s, sub) for s,sub in zip(self.stdin.loc[self.args['sample_id'],:].tolist(), self.stdin.loc['subjectID', :].tolist())])
 
-        if self.args['alpha_diversity']:
-            f = self.edit_(self.stdin, self.args['sample_id'], self.args['feature_identifier'])
-            data = f.loc[[i for i in f.index.tolist() if (self.args['feature_identifier'] in i)]].T
-            metadata = f.loc[[i for i in f.index.tolist() if (not self.args['feature_identifier'] in i)]]
+        if self.args['alpha_diversity'] or self.args['class_center'] == 'average':
 
-            self.sample_in_class, self.atts_of_sample, self.sample_to_class = self.guess_classes(metadata)
+            f = self.edit_(self.stdin, self.args['sample_id'], self.args['feature_identifier'])
+            self.data = f.loc[[i for i in f.index.tolist() if (self.args['feature_identifier'] in i)]].T
+            self.metadata = f.loc[[i for i in f.index.tolist() if (not self.args['feature_identifier'] in i)]]
+
+            self.sample_in_class, self.atts_of_sample, self.sample_to_class = self.guess_classes(self.metadata)
             self.legend = [ll.split() for ll in list(set([' '.join(l) for l in self.atts_of_sample.values()]))]
-            self.plot_alpha_diversity(data, metadata)
+            
+            if self.args['alpha_diversity']: self.plot_alpha_diversity(self.data, self.metadata)
+            if self.args['class_center'] == 'average': 
+
+                if self.args['gradient_on']: 
+
+                    self.key_column = dict([(sample, \
+                            float(self.stdin.loc[self.args['gradient_on']\
+                          , self.stdin.loc[self.args['sample_id']].isin([sample]).tolist()].tolist()[0])) \
+                            for sample in self.metadata.loc[self.args['sample_id'], :].tolist()])
+
+                self.compute_centroids(self.data, self.metadata)
+
+                #if self.args['passing_centroids']:
+                #         for i in self.centroids.index.tolist(): print '\t'.join([i]+list(map(str, self.centroids.loc[i])))
+
+
+                if self.args['save_centroids']: self.save_centroids()  # and (self.args['class_center'] == 'average'): self.save_centroids() 
+            #if self.args['save_centroids'] and (not self.args['class_center']):
+                #self.compute_centroids(self.data, self.metadata)
+                #self.save_centroids()
+            #    raise KeyError('Specify if you want class_center computed as AVERAGE OR as CENTROIDS')                 
+    
 
         else:
             self.shapes_types = '.,ov^<>1234sp*hH+xDd|_'
@@ -79,26 +100,6 @@ class beta_diversity(object):
                 self.couples_by_class = dict([(k, [ss for ss in list(map(list, itertools.combinations(self.sample_in_class[k], 2))) \
                   if self.subjects[ss[0]]==self.subjects[ss[1]]]) for k in self.sample_in_class]) ## self.stdin.loc[self.args['sample_id'],:].tolist()])
 
-                #for k in self.couples_by_class: 
-                #    print k, self.couples_by_class[k], ' ou yessss'
-
-                #self.legend = sorted([ll.split() for ll in list(set([' '.join(l) for l in self.atts_of_sample.values()])) if ll.split()[0] in self.couples_by_class], key = lambda w : w[0])
-
-                #if not self.args['intra_individual'] else \
-                #[ss for ss in list(map(list, itertools.combinations(self.sample_in_class[k], 2))) if self.subjects[ss[0]]==self.subjects[ss[1]]] \
-                #) for k in self.sample_in_class.keys()]) ## .items() if bool(len(vl))])
-
-            #self.legend = sorted([ll.split() for ll in list(set([' '.join(l) for l in self.atts_of_sample.values()]))], key = lambda w : w[0])
-            #self.legend_dict = dict([(t[0],t[1:]) for t in self.legend])
-
-            # self.legend_dict = dict([(t[0],t[1:]) for t in self.legend])
-
-            #print self.legend
-            #print self.sample_in_class
-            #print self.couples_by_class, ' guarda qui'
-
-            #self.classes_by_couple = dict([(v,k) for k,v in self.couples_by_class.items()])
-
             self.sample_and_coordinates = self.stack_sample_coordinates() \
                 	if not self.args['load_coordinates'] \
                 	else pd.read_csv(self.args['load_coordinates'], sep='\t', header=0, index_col=0)
@@ -106,41 +107,107 @@ class beta_diversity(object):
             if self.args['save_coordinates']: self.save_coordinates(self.args['save_coordinates'])
             if self.args['mask']: self.mask()
             if self.args['explain']: self.explain()
-    
-            #if self.args['save_beta_diversity']:
-            #    self.save_beta_matrix()
 
-            if (self.args['boxplot']) or (self.args['avg_dist_from_centroid']) or self.args['save_beta_diversity']:
+            if (self.args['boxplot']) or \
+	           (self.args['avg_dist_from_defined_classes']) or \
+		   (self.args['save_beta_diversity']) or \
+                   (self.args['class_center'] == 'centroids'):
+
                 self.dist_mat = pd.DataFrame(data=self.coordinates, columns=self.metadata.loc['sampleID', :], index=self.metadata.loc['sampleID', :])
 
                 if self.args['save_beta_diversity']: self.dist_mat.to_csv(self.args['save_beta_diversity'], sep='\t', header=True, index=True)
+                if self.args['avg_dist_from_defined_classes']: self.avg_dist_from_defined_classes() 
+                if self.args['boxplot']: 
+                    if self.args['stdout']: self.box_plot()
+               
+                if self.args['class_center'] == 'centroids': 
 
-                if self.args['avg_dist_from_centroid']: self.avg_dist_from_centroid()
+                    f = self.edit_(self.stdin, self.args['sample_id'], self.args['feature_identifier'])
+                    self.data = f.loc[[i for i in f.index.tolist() if (self.args['feature_identifier'] in i)]].T
 
-                if self.args['boxplot']: self.box_plot()
+                    #print ' qui e pieno di finocchi'
+                    self.compute_centroids(self.data, self.metadata)
+
+                    if self.args['save_centroids']: self.save_centroids() 
+                #if self.args['save_centroids']: self.save_centroids()
+                    #    and (self.args['class_center'] == 'centroids'): 
+                    #    self.compute_centroids(self.data, self.metadata)
+                #    self.save_centroids()
+                #if self.args['save_centroids'] and (self.args['class_center']):
+                #    raise KeyError('Specify if you want class_center computed as AVERAGE OR as CENTROIDS')
+
+                    if self.args['gradient_on']: 
+                        self.key_column = dict([(sample, \
+                           float(self.stdin.loc[self.args['gradient_on'], self.stdin.loc[self.args['sample_id']].isin([sample]).tolist()].tolist()[0])) \
+                           for sample in self.metadata.loc[self.args['sample_id'], :].tolist()])
+
+                    #if self.args['passing_centroids']:
+                    #     for i in self.centroids.index.tolist(): print '\t'.join([i]+list(map(str, self.centroids.loc[i])))
 
             else:
-                #self.sample_and_coordinates = self.stack_sample_coordinates() \
-	        #    if not self.args['load_coordinates'] \
-	        #    else pd.read_csv(self.args['load_coordinates'], sep='\t', header=0, index_col=0)        
-                #if self.args['save_coordinates']: self.save_coordinates(self.args['save_coordinates'])
-                #if self.args['mask']: self.mask()
-                #if self.args['explain']: self.explain()
+
                 if not (not self.args['no_ordination']): 
                     self.scatter_plot()
 
 
-    def avg_dist_from_centroid(self):
+
+    def compute_centroids(self, data, metadata):
+        data = data.astype('float')
+        self.indexes = dict([(name, number) for number,name in zip(metadata.columns.tolist(),metadata.loc['sampleID', :].tolist())])
+
+        if self.args['class_center'] == 'average':
+            self.centroids = (pd.DataFrame(\
+                dict([(clss, \
+                data.loc[[self.indexes[name] for name in self.sample_in_class[clss]], :].apply(np.mean, axis=0).tolist()) \
+                for clss in self.sample_in_class]), index=data.columns.tolist()) ) # if self.args['class_center'] == 'average' \
+
+        else:  
+            classes = [clss for clss in self.sample_in_class.keys()]
+            tot_dist_from_the_others = pd.DataFrame(dict([(sample, \
+                [np.sum(self.dist_mat.loc[sample, self.sample_in_class[clss]].tolist()) \
+                for clss in classes]) \
+                for sample in self.stdin.loc[self.args['sample_id'], :].tolist()]), \
+                    index=classes).T
+
+            centroids = [(tot_dist_from_the_others.index.tolist()[\
+                          tot_dist_from_the_others[clss].tolist().index(\
+                          np.min(tot_dist_from_the_others[clss].tolist()))])\
+                         for clss in classes]
+
+            centroids_first = pd.DataFrame(dict([(sample, \
+                data.loc[self.indexes[sample], :].tolist()) \
+                for sample in centroids])\
+               ,index=data.columns.tolist())
+
+            self.centroids = pd.DataFrame(dict([(\
+                self.atts_of_sample[sample][0], \
+                data.loc[self.indexes[sample],:].tolist()) \
+                for sample in centroids])\
+               ,index=data.columns.tolist())
+
+            #print 'THE BIG KAHUNA'
+            #print centroids_first, ' LA PRIMA VERSA PER VDERE SE LE CLASSI RITORNANO'             
+            #exit(1)
+            #print self.centroids, ' LA SECONDA VERA PER VEDERE  CENTROIDI FIGHI DURI COME POCHI PURI'
+            
+
+
+        
+    def save_centroids(self): self.centroids.to_csv(self.args['save_centroids'], sep='\t', header=True, index=True)
+        
+
+
+    def avg_dist_from_defined_classes(self):
 
         centroids = [cent for cent in self.sample_in_class.keys()]
 
-        self.dist_from_centroids = pd.DataFrame(dict([(sample, \
+        self.dist_from_defined_classes = pd.DataFrame(dict([(sample, \
             [np.mean(self.dist_mat.loc[sample, self.sample_in_class[cent]].tolist()) \
             for cent in centroids]) \
             for sample in self.stdin.loc[self.args['sample_id'], :].tolist()]), \
           index = centroids).T
 
-        print self.dist_from_centroids
+        self.dist_from_defined_classes.to_csv(self.args['avg_dist_from_defined_classes'], sep='\t', header=True, index=True)
 
 
 
@@ -191,7 +258,13 @@ class beta_diversity(object):
 
         arg(	'--intra_individual', action='store_true')
         arg(	'-sb', '--save_beta_diversity', default=None, type=str)
-        arg(	'-avgd', '--avg_dist_from_centroid', default=None, type=str)
+        arg(	'-avgd', '--avg_dist_from_defined_classes', default=None, type=str)
+        
+        arg(	'-cc', '--class_center', type=str, default=None, choices=['centroids', 'average']) 
+        ## classes are defined by 'define' column in the whole tool
+        arg(	       '--save_centroids', default=None, type=str)
+        #arg(	       '--print_centroids')
+        #arg(	       '--passing_centroids', action='store_true', help='flag to print centroids in stdout')
 
         arg(	'--p_values', type=str, default='above', choices=['above', 'below'])
         arg(	'--p_values_only_for', type=str, nargs='+', default=[])
@@ -281,7 +354,10 @@ class beta_diversity(object):
         data = f.loc[[i for i in f.index.tolist() if (feat_id in i)]].T
         metadata = f.loc[[i for i in f.index.tolist() if (not feat_id in i)]]
         T_func = (self.pca if way == 'pca' else (self.mds if way == 'mds' else self.nmds))\
-            if not any([self.args['boxplot'], self.args['avg_dist_from_centroid'], self.args['save_beta_diversity']])\
+            if not any([self.args['boxplot']\
+                      , self.args['avg_dist_from_defined_classes']\
+                      , self.args['save_beta_diversity']\
+                      , self.args['class_center']])\
             else 'just_the_matrix'
 
         if T_func != 'just_the_matrix':
@@ -361,6 +437,14 @@ class beta_diversity(object):
         for c in self.sample_in_class.keys():
 
             present = [s for s in self.sample_in_class[c] if s in set(self.sample_and_coordinates.index.tolist())]
+
+            #print c, ' is the class'
+            #print present, ' are the present ones'
+            #print self.sample_in_class
+            #print set(self.sample_and_coordinates.index.tolist()), ' quest e la condizione'
+            #print self.atts_of_sample
+            #print self.atts_of_sample[present[0]], ' atts of sample con present [con zero]'
+
 
             if not self.grads:            
                 present_sample_frame = self.sample_and_coordinates.loc[present]
@@ -469,6 +553,7 @@ class beta_diversity(object):
     def box_plot(self):
        
         sns.set_style(self.args['facecolor'])  
+        fig, ax = plt.subplots(figsize=(8,(8 if self.args['squared_plot'] else 6)))
 
         #for c in self.couples_by_class: self.couples_by_class[c], '   copro di mille balene'
         #print self.args['p_values_only_for']
@@ -494,10 +579,9 @@ class beta_diversity(object):
                        [[couple for couple in self.couples_by_class[c[0]]] for c in self.legend if len(self.couples_by_class[c[0]])]))\
                   ) ]], columns=['', 'color', 'group_by', 'Beta-Diversity']) 
 
-
-        ax = sns.swarmplot(data=data, x='', y='Beta-Diversity'\
+        ax_w = sns.swarmplot(data=data, x='', y='Beta-Diversity', ax=ax\
           , hue=None if len(list(set(data['group_by'].tolist())))==1 else 'group_by', dodge=True, s=2, color='black', alpha=1.)
-        ax = sns.boxplot(data=data, x='', y='Beta-Diversity', linewidth=1.\
+        ax_b = sns.boxplot(data=data, x='', y='Beta-Diversity', linewidth=1., ax=ax\
           , hue=None if len(list(set(data['group_by'].tolist())))==1 else 'group_by', palette=dict([(c[0], c[1]) for c in self.legend]))
 
         data.columns = ['class', 'color', 'group_by', 'Beta-Diversity']
@@ -573,6 +657,8 @@ class beta_diversity(object):
     def plot_alpha_diversity(self, f, meta):
 
         sns.set_style(self.args['facecolor'])  
+        #fig, ax = plt.subplots(figsize=(8,(8 if self.args['squared_plot'] else 6)))
+
         samples = dict([(e+1,n) for e,n in enumerate(meta.loc['sampleID', :].tolist())])
 
         self.simple_richness = dict([(samples[i], np.count_nonzero(f.loc[i].astype(float).tolist())) for i in f.index.tolist()])
@@ -615,12 +701,14 @@ class beta_diversity(object):
 
             print 
 
-            fig = plt.figure(figsize=(8,6))
+            #fig = plt.figure(figsize=(8,6))
 
-            ax = sns.swarmplot(data=data_, x='', y=type_of_richness, hue=None if len(list(set(data['group_by'].tolist())))==1 else 'group_by'\
-	     , dodge=True, s=4, color='black', alpha=0.7)
-            ax = sns.boxplot(data=data_, x='', y=type_of_richness, hue=None if len(list(set(data['group_by'].tolist())))==1 else 'group_by'\
-	     , palette=dict([(c[0], c[1]) for c in self.legend]), linewidth=1.)
+            fig, ax = plt.subplots(figsize=(8,(8 if self.args['squared_plot'] else 6)))
+
+            ax_w = sns.swarmplot(data=data_, x='', y=type_of_richness, hue=None if len(list(set(data['group_by'].tolist())))==1 else 'group_by'\
+	     , dodge=True, s=4, color='black', alpha=0.7, ax=ax)
+            ax_b = sns.boxplot(data=data_, x='', y=type_of_richness, hue=None if len(list(set(data['group_by'].tolist())))==1 else 'group_by'\
+	     , palette=dict([(c[0], c[1]) for c in self.legend]), linewidth=1., ax=ax)
 
             drop = data[type_of_richness].max()*0.02
             if self.args['p_values'] == 'above': H = data[type_of_richness].max() + drop
