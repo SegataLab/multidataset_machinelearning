@@ -1,17 +1,18 @@
-# Scope and Requirements #
+# Contact statement: since this tutorial is still in progress, please for any needing feel free to get in touch with me at paolomanghi1974@gmail.com # 
 
-## This repo provides a series of script for Data-Driven Whole-Genome-Shotgun (WGS) Metagenomics, in particular:
+# Where you are #
+
+## This repo provides a series of script for Data-Driven Whole-Genome-Shotgun (WGS) Metagenomics, in particular
+## it allows the generation of figures relative to the Machine-Learning analysis in the paper: "Metagenomic analysis of colorectal cancer datasets identifies cross-cohort microbial diagnostic signatures and a link with choline degradation."
+
+# What does this repo actually contain # 
 
 * 1 program allowing the download of a dataset from NCBI.
 * 2 programs for speed up the boring procedure of writing in Bash a whole Machine-Learning (ML) meta-analyses based on several WGS datasets (all or part of them, maybe, just downloaded with the above named program).  
 * 3 programs producing figures relative to the different aspect of the ML analyses conducted with the above program (the indeed become quite detailed).
 * 4 programs devoted to the basic part of a standard WGS analyses, including the generation of figures such as: any type of ordination plot (literally), beta-diversity box-plots, alpha diversity boxplots.
-* 5 program plotting the correlation between an index and the distance from the centroid of a class in the data.
 
-### ALL the listed programs can be quite tricky to run if never done before, 'cos a detailed documentaion is still lacking: for any necessity fell free to write at paolomanghi1974@gmail.com.
-## generation of figures relative to the Machine-Learning analysis in the paper: "Metagenomic analysis of colorectal cancer datasets identifies cross-cohort microbial diagnostic signatures and a link with choline degradation." 
-
-## Getting Started
+## Getting Started step n.1
 
 To clone the present repo:
 
@@ -35,6 +36,8 @@ hg clone https://<USER>@bitbucket.org/CibioCM/cmdpy
 - cmdpy repo contains the tool cmdpy_dataset.py which is used to merge quantitative profiles with metadata
 - metaml repo contains the tool classification_thomas-manghi.py which is needed to run the main analysis
 
+## Getting Started step n.2
+
 #### NOTE: these figures have been create from a server in which I'm also maintaining the curatedMetagenomicDataset package
 #### that means that is conceived as an architecture with the following tree-shape:
 
@@ -47,7 +50,67 @@ hg clone https://<USER>@bitbucket.org/CibioCM/cmdpy
 - /base_folder/dataset_name/metaphlan2/sample_#1_name/sample_#1_name_profile.tsv
 - /base_folder/dataset_name/metaphlan2/sample_#1_name/sample_#2_name_profile.tsv
 
-##### once the architecture is set (that means also having dataset-based folders, metadata table and metaphlan2 profiles)
+
+## Getting Started step n.3
+##### once the architecture is set (that means also having dataset-based folders, metadata table and metaphlan2 profiles), please note that the essential script refers to such architecture, indeed do:
+
+```
+vi ../cmdpy/cmdpy_dataset.py
+```
+
+you'll see the following lines:
+
+```
+- NOTE: for very large databases (genefamilies, markers)
+- there's an option to perform Wilcoxon - rank 
+- in order to srhink features.
+"""
+
+BASE_PATH='/CM/data/meta/'
+
+class metadataset:
+
+    def __init__(self):
+```
+
+manually change BASE_PATH from "/CM/data/meta/" to "/YOUR/SERVER/BASE-ARCHITECTURE/" considering that this must be the place in which you keep your different datasets (SEE above)
+then exit 
+
+```
+press ESC, then type:
+:wq
+```
+
+Now do:
+
+```
+vi run.py
+
+```
+
+you should be able to see the following lines:
+
+```
+from utils import usefullfuncs ## utilities
+import argparse as ap
+import sys
+
+BASE_PYTHON=''
+
+def read_params(args):
+```
+
+please, change BASE_PYTHON from /shares/CIBIO-Storage/CM/scratch/users/paolo.manghi/anaconda3/bin/" to "/YOUR/FOVOURITE/PYTHON.3/bin/"
+and exit
+
+```
+press ESC, then type:
+:wq
+```
+
+Now you should be able to run the analysis. If not, please refer to paolomanghi1974@gmail.com.
+
+## Prepare the analysis step n.1
 ##### the first step is to proceed to the dataset generation (ML == starting datasets) THEREFORE, in order to generate the datasets: do
 
     ```
@@ -68,6 +131,22 @@ hg clone https://<USER>@bitbucket.org/CibioCM/cmdpy
 	lodo_metaphlan_study_condition:CRC:control_rf_gridterm0:nt_500_gridterm1:nsl_5_gridterm2:c_entropy.sh
 	```
 
+## Running the analysis:
+In order to run the analysis
+
+```
+chmod +x datasetcaller_metaphlan.sh
+chmod +x transfer_metaphlan_study_condition:CRC:control_rf_gridterm0:nt_500_gridterm1:nsl_5_gridterm2:c_entropy.sh
+chmod +x lodo_metaphlan_study_condition:CRC:control_rf_gridterm0:nt_500_gridterm1:nsl_5_gridterm2:c_entropy.sh
+
+./datasetcaller_metaphlan.sh
+./transfer_metaphlan_study_condition:CRC:control_rf_gridterm0:nt_500_gridterm1:nsl_5_gridterm2:c_entropy.sh
+./lodo_metaphlan_study_condition:CRC:control_rf_gridterm0:nt_500_gridterm1:nsl_5_gridterm2:c_entropy.sh
+```
+
+Please note that these analysis may take more than some minute, dependning on the computational sources adopted.
+For errors, please refer to paolomanghi1974@gmail.com
+
 ##### these .sh are wrappers for all the analysis needed
 ##### IF YOU INSTALLED THE CMDPY AND METAML REPOS YOU SHOULD BE ABLE TO RUN THESE COMMANDS IN THE ORDER LISTED
 
@@ -79,20 +158,21 @@ hg clone https://<USER>@bitbucket.org/CibioCM/cmdpy
 	** n. datasets * n. datasets tests + n. datasets Leave-One-Dataset-Out predictions
 
 	```
-    	
-	
+    python run.py crc --define study_condition:CRC:control \
+			-ds FengQ_2015 ZellerG_2014 CM_rescignocrc YuJ_2015 CM_lilt VogtmannE_2016 HanniganGD_2017 \
+		-db metaphlan \
+		-do cross_figures \
+		-g0 c:entropy -g1 nt:500 -g2 nsl:5 
+		-cm hot 
+		--path Fig_Cross_Prediction/	
 	
 	```
 	* Figure 3 panel a:
 	** This analysis consist in a feature-ranking of 7 cross-validation
 	*** Therefore the step n. 1 is to perform these cross-validation
-	*** In order to speed up the analysis, I built a code for naming files:
-	
-	** 
-	
 	
 	```
-	python ../../../multidataset_machinelearning/run.py crc \
+	python run.py crc \
 			--define study_condition:CRC:control \
 			--datasets \
 					FengQ_2015 ZellerG_2014 CM_rescignocrc YuJ_2015 CM_lilt VogtmannE_2016 HanniganGD_2017 \
@@ -100,7 +180,7 @@ hg clone https://<USER>@bitbucket.org/CibioCM/cmdpy
 			-do heat_map 
 			-db metaphlan 
 			-g0 c:entropy -g1 nt:1000 -g2 nsl:5 -nif 5 
-			--path Fig_Three/
+			--path Feat_Rank_Heatmap/
 	
 	```
 
