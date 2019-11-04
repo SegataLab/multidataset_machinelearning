@@ -104,23 +104,23 @@ Now you should be able to run the analysis. If not, please refer to paolomanghi1
 ## Prepare the analysis step n.1
 ##### the first step is to proceed to the dataset generation (ML == starting datasets) THEREFORE, in order to generate the datasets: do
 
-    ```
-	python run.py crc --define study_condition:CRC:control \
+```
+python run.py crc --define study_condition:CRC:control \
 		-ds ZellerG_2014 YuJ_2015 FengQ_2015 VogtmannE_2016 CM_rescignocrc CM_lilt HanniganGD_2017 \
 		-db metaphlan \
 		-do cross_study \
-			-g0 nt:500 -g1 nsl:5 -g2 c:entropy
-	```
+		-g0 nt:500 -g1 nsl:5 -g2 c:entropy
+```
 
 ##### if run without errors, you should be able to see in the folder you run it to files.sh:
 
-    ```
-	ls
+```
+ls
 	
-	datasetcaller_metaphlan.sh
-	transfer_metaphlan_study_condition:CRC:control_rf_gridterm0:nt_500_gridterm1:nsl_5_gridterm2:c_entropy.sh
-	lodo_metaphlan_study_condition:CRC:control_rf_gridterm0:nt_500_gridterm1:nsl_5_gridterm2:c_entropy.sh
-	```
+datasetcaller_metaphlan.sh
+transfer_metaphlan_study_condition:CRC:control_rf_gridterm0:nt_500_gridterm1:nsl_5_gridterm2:c_entropy.sh
+lodo_metaphlan_study_condition:CRC:control_rf_gridterm0:nt_500_gridterm1:nsl_5_gridterm2:c_entropy.sh
+```
 
 ## Running the analysis:
 In order to run the analysis
@@ -147,16 +147,15 @@ For errors, please refer to paolomanghi1974@gmail.com
 ** This analysis consist of a cross prediction matrix consisting of 
 ** n. datasets * n. datasets tests + n. datasets Leave-One-Dataset-Out predictions
 
-	```
-    python run.py crc --define study_condition:CRC:control \
-			-ds FengQ_2015 ZellerG_2014 CM_rescignocrc YuJ_2015 CM_lilt VogtmannE_2016 HanniganGD_2017 \
+```
+python run.py crc --define study_condition:CRC:control \
+	-ds FengQ_2015 ZellerG_2014 CM_rescignocrc YuJ_2015 CM_lilt VogtmannE_2016 HanniganGD_2017 \
 		-db metaphlan \
 		-do cross_figures \
 		-g0 c:entropy -g1 nt:500 -g2 nsl:5 
 		-cm hot 
 		--path Fig_Cross_Prediction/	
-	
-	```
+```
 
 If you manage to run this command without errors, you should now have generated a figure named
 
@@ -170,24 +169,22 @@ which, in the present case should look like: ![MachineLearning_crc_metaphlan_all
 ** This analysis consist in a feature-ranking of 7 cross-validation
 *** Therefore the step n. 1 is to perform these cross-validation
 		
-	```
-	python run.py crc \
-			--define study_condition:CRC:control \
-			--datasets \
-					FengQ_2015 ZellerG_2014 CM_rescignocrc YuJ_2015 CM_lilt VogtmannE_2016 HanniganGD_2017 \
-			-al rf \
-			-do heat_map 
-			-db metaphlan 
-			-g0 c:entropy -g1 nt:1000 -g2 nsl:5 -nif 5 
-			--path Feat_Rank_Heatmap/
-	
-	```
+```
+python run.py crc \
+	--define study_condition:CRC:control \
+		--datasets \
+			FengQ_2015 ZellerG_2014 CM_rescignocrc YuJ_2015 CM_lilt VogtmannE_2016 HanniganGD_2017 \
+		-al rf \
+		-do heat_map 
+		-db metaphlan 
+		-g0 c:entropy -g1 nt:1000 -g2 nsl:5 -nif 5 
+		--path Feat_Rank_Heatmap/
+```
 
 If you manage to run this analysis without errors, you should be able to see file named:
 ```
 FeatureHeatmap_warm.png
 ```
-
 which, in the present case should look like:
 
 ![FeatureHeatmap_warm2.png](https://bitbucket.org/repo/p4MR7K5/images/558990500-FeatureHeatmap_warm2.png)
