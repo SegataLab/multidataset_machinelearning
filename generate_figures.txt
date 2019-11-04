@@ -1,0 +1,53 @@
+
+
+## Adenomas Analysis
+
+#python ../../../../multidataset_machinelearning/run.py adenomas_vs_CRC --define study_condition:CRC:adenoma -ds ZellerG_2014 FengQ_2015 CM_lilt HanniganGD_2017 -db metaphlan -al rf -g0 c:entropy -g1 nt:1000 -g2 nsl:5 -ncores 2 -mf 0.3 -r 1 -do cross_figures -ft ML_HM_metaphlan_adenoma_vs_CRC --path /scratchCM/users/paolo.manghi/crc_nat_med/whole_analysis_again/Supplementary/Adenomas/
+
+#python ../../../../multidataset_machinelearning/run.py adenomas_cs_control --define study_condition:adenoma:control -ds ZellerG_2014 FengQ_2015 CM_lilt HanniganGD_2017 -db metaphlan -al rf -g0 c:entropy -g1 nt:1000 -g2 nsl:5 -ncores 2 -mf 0.3 -r 1 -do cross_figures -ft ML_HM_metaphlan_adenoma_vs_control --path /scratchCM/users/paolo.manghi/crc_nat_med/whole_analysis_again/Supplementary/Adenomas/
+
+
+
+
+## BATCH PLOT:
+#python ../../../../multidataset_machinelearning/run.py crc -ds FengQ_2015 ZellerG_2014 CM_rescignocrc YuJ_2015 CM_lilt VogtmannE_2016 HanniganGD_2017 -db metaphlan -al rf -g0 c:entropy -g1 nt:1000 -g2 nsl:5 -hv 0 -ncores 1 --figtitle "Batch on CRC" -do cross_batch_figure --path /scratchCM/users/paolo.manghi/crc_nat_med/whole_analysis_again/Supplementary/Batch/
+
+
+## metaphlan curve 
+python ../../../multidataset_machinelearning/run.py crc --define study_condition:CRC:control -ds ZellerG_2014 YuJ_2015 FengQ_2015 VogtmannE_2016 CM_rescignocrc CM_lilt HanniganGD_2017 -db metaphlan -do feat_curve -g0 c:entropy -g1 nt:1000 -g2 nsl:5 --path /scratchCM/users/paolo.manghi/crc_nat_med/whole_analysis_again/Fig_Four/
+
+# genefamilies curve
+#python ../../../multidataset_machinelearning/run.py crc --define study_condition:CRC:control -ds ZellerG_2014 YuJ_2015 FengQ_2015 VogtmannE_2016 CM_rescignocrc CM_lilt HanniganGD_2017 -db genefamilies -do feat_curve -g0 nt:1000 -g1 nsl:5 -g2 c:entropy --path /scratchCM/users/paolo.manghi/crc_nat_med/whole_analysis_again/Supplementary/Genes_Cut
+
+
+## metaphlan heatmap
+python ../../../multidataset_machinelearning/run.py crc --define study_condition:CRC:control --datasets FengQ_2015 ZellerG_2014 CM_rescignocrc YuJ_2015 CM_lilt VogtmannE_2016 HanniganGD_2017 -al rf -do heat_map -db metaphlan -g0 c:entropy -g1 nt:1000 -g2 nsl:5 -nif 5 --path /scratchCM/users/paolo.manghi/crc_nat_med/whole_analysis_again/Fig_Four/
+
+
+## CROSS PREDICTION:
+## genefamilies:
+python ../../multidataset_machinelearning/run.py crc --define study_condition:CRC:control -ds FengQ_2015 ZellerG_2014 CM_rescignocrc YuJ_2015 CM_lilt VogtmannE_2016 HanniganGD_2017 -db genefamilies -do cross_figures -g1 nt:1000 -g0 nsl:5 -g2 df -cm hot --path /scratchCM/users/paolo.manghi/crc_nat_med/whole_analysis_again/ 
+
+## metaphlan
+#python ../../multidataset_machinelearning/run.py crc --define study_condition:CRC:control -ds FengQ_2015 ZellerG_2014 CM_rescignocrc YuJ_2015 CM_lilt VogtmannE_2016 HanniganGD_2017 -db metaphlan -do cross_figures -g0 c:entropy -g1 nt:1000 -g2 nsl:5 -cm hot --path /scratchCM/users/paolo.manghi/crc_nat_med/whole_analysis_again/
+
+
+
+## super model
+## python ../../multidataset_machinelearning/run.py crc --define study_condition:CRC:control -ds FengQ_2015 ZellerG_2014 CM_rescignocrc YuJ_2015 CM_lilt VogtmannE_2016 HanniganGD_2017 -db metaphlan -do cross_figures -g0 nt:1000 -g1 nsl:5 -g2 c:entropy -cm hot --path /scratchCM/users/paolo.manghi/crc_nat_med/classifier_CRC_IBD/
+
+
+##########python ../../multidataset_machinelearning/run.py crc --define study_condition:CRC:control -ds FengQ_2015 ZellerG_2014 CM_rescignocrc YuJ_2015 CM_lilt VogtmannE_2016 HanniganGD_2017 -db metaphlan -do cross_figures -g0 nt:1000 -g1 nsl:5  -g2 c:entropy -cm hot --path /scratchCM/users/paolo.manghi/crc_nat_med/whole_analysis_again/ 
+
+
+## pathways
+python ../../multidataset_machinelearning/run.py crc --define study_condition:CRC:control -ds FengQ_2015 ZellerG_2014 CM_rescignocrc YuJ_2015 CM_lilt VogtmannE_2016 HanniganGD_2017 -db pathways -do cross_figures -g0 nt:1000 -g1 nsl:5 -g2 c:entropy -cm hot --path /scratchCM/users/paolo.manghi/crc_nat_med/whole_analysis_again/
+
+## markerse
+python ../../multidataset_machinelearning/run.py crc --define study_condition:CRC:control -ds FengQ_2015 ZellerG_2014 CM_rescignocrc YuJ_2015 CM_lilt VogtmannE_2016 HanniganGD_2017 -db markers -do cross_figures -g0 nt:1000 -g1 nsl:5 -g2 df -cm hot --path /scratchCM/users/paolo.manghi/crc_nat_med/whole_analysis_again/
+
+
+## metaphlan progressive learning:
+##python ../../../multidataset_machinelearning/run.py crc --define study_condition:CRC:control --datasets ZellerG_2014 YuJ_2015 FengQ_2015 VogtmannE_2016 CM_rescignocrc CM_lilt HanniganGD_2017 -al rf -do support_plot -db metaphlan -g0 nt:1000 -g1 nsl:5 -g2 c:entropy --path /scratchCM/users/paolo.manghi/crc_nat_med/whole_analysis_again/Progressive/ -fmt svg
+## genef
+##python ../../../multidataset_machinelearning/run.py crc --define study_condition:CRC:control --datasets ZellerG_2014 YuJ_2015 FengQ_2015 VogtmannE_2016 CM_rescignocrc CM_lilt HanniganGD_2017 -al rf -do support_plot -db genefamilies -g0 nsl:5 -g1 nt:1000 -g2 df --path /scratchCM/users/paolo.manghi/crc_nat_med/whole_analysis_again/Progressive/ -fmt svg
