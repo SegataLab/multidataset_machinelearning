@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import itertools
-import utils 
+import utils_mod
 
 ## last attempt on gene families
 ## python run.py crc --define study_condition:CRC:control -ds ZellerG_2014 YuJ_2015 FengQ_2015 VogtmannE_2016 CM_rescignocrc CM_lilt HanniganGD_2017 -db genefamilies -al rf -do cross_study -g0 nsl:5 -g1 nt:1000 -g2 df -hv 0 -ncores 2 -mf 0.01 -r 1
@@ -14,7 +14,7 @@ class cross_study(object):
 
     def __init__(self, datasets, defined_problem, databases, which_python, n_iter, max_feat, ncores, grid_term0, grid_term1, grid_term2, restrict, how_verbose, in_background, mixed_taxa):
 
-        self.utils = utils.usefullfuncs(datasets, mixed_taxa)
+        self.utils = utils_mod.usefullfuncs(datasets, mixed_taxa)
         self.datasets = datasets
         self.couples = list(itertools.combinations_with_replacement(self.datasets, 2))
         self.databases = databases
@@ -59,7 +59,7 @@ class cross_study(object):
 
 
     def dataset_cross_study(self, pool, db, test):
-        commandline = [self.which_python+'/python','../multidataset_machinelearning/cmdpy_dataset.py']
+        commandline = [self.which_python+'/python','../cmdpy/cmdpy_dataset.py']
         if self.utils.isonedata(pool): commandline.append(pool[0]+'.'+test)
 
         else:
@@ -78,7 +78,7 @@ class cross_study(object):
 
 
     def dataset_batch_study(self, pool, db, test):
-        commandline = [self.which_python+'/python','../multidataset_machinelearning/cmdpy_dataset.py']
+        commandline = [self.which_python+'/python','../cmdpy/cmdpy_dataset.py']
 
         for data in pool: commandline.append(data+'.'+test)
 
@@ -94,7 +94,7 @@ class cross_study(object):
     def write_cross_command_lines(self):
         test = self.tests[0]
         for db in self.databases:
-            datasetcaller = open('../datasetcaller'+(db if isinstance(db, str) else '_'.join(db))+('.sh' if not self.mixed_taxa else '_mixed_taxa.sh') ,'w')
+            datasetcaller = open('datasetcaller_'+(db if isinstance(db, str) else '_'.join(db))+('.sh' if not self.mixed_taxa else '_mixed_taxa.sh') ,'w')
             datasetcaller.write('#!/bin/bash\n')
             if not self.restrict == 'lodo':
                 for pool in self.couples: datasetcaller.write(self.dataset_cross_study(pool, db, test))
@@ -251,7 +251,8 @@ class cross_study(object):
         if (algo == 'rf') | (algo.endswith('svm')):
             explanation = '_gridterm0:%s_gridterm1:%s_gridterm2:%s' %('_'.join(self.grid_term0.split(':')), '_'.join(self.grid_term1.split(':')), '_'.join(self.grid_term2.split(':')))
             algorithm = self.random_forest_experiment_batch
-        else: raise NotImplementedError('Only rand-oh forest & support crazy horse-vectors are ready so far, and BTW rand-oh is the only one working, so WTF')
+        else:
+            raise NotImplementedError('Only rand-oh forest & support crazy horse-vectors are ready so far, and BTW rand-oh is the only one working, so WTF')
         
         for db in self.databases:
             ext = open('../batch_'+class_+'_'+(db if isinstance(db, str) else '_'.join(db))+algo+explanation+('.sh'), 'w')

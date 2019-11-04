@@ -213,9 +213,8 @@ if __name__=='__main__':
         ### os.mkdir(par['destination_path']+par['dataset']+'/'+par['markerpres_f'])
         ###os.mkdir(par['destination_path']+par['dataset']+'/'+par['markerab_f'])
        
-
-        gn_samples = par['origin_path'] + par['dataset'] + '/' + par['gene_fish'] + '/*.tsv'
-        pwy_samples = par['origin_path'] +par['dataset']+'/'+ par['pwy_fish'] + '/*.tsv'
+        gn_samples = par['origin_path'] + par['dataset'] + '/' + par['gene_fish'] + '/*_RNA.tsv'
+        pwy_samples = par['origin_path'] +par['dataset']+'/'+ par['pwy_fish'] + '/*_RNA.tsv'
         #mar_samples = par['origin_path'] +par['dataset']+'/'+ par['markerpres_fish'] + '/*.tsv'
 
         basename = lambda s : s.split('/')[-1]
