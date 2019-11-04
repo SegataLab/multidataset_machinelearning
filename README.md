@@ -90,15 +90,12 @@ BASE_PYTHON='/shares/CIBIO-Storage/CM/scratch/users/paolo.manghi/anaconda3/bin/'
 
 def read_params(args):
 ```
-
 please, change BASE_PYTHON from "/shares/CIBIO-Storage/CM/scratch/users/paolo.manghi/anaconda3/bin/" to "/YOUR/FOVOURITE/PYTHON.3/bin/"
 and exit
-
 ```
 press ESC, then type:
 :wq
 ```
-
 Now you should be able to run the analysis. If not, please refer to paolomanghi1974@gmail.com.
 
 ## Prepare the analysis step n.1
@@ -166,6 +163,42 @@ which, in the present case should look like:
 
 ![MachineLearning_crc_metaphlan_all_features2%20copy.jpg]
 (https://bitbucket.org/repo/p4MR7K5/images/3967973586-MachineLearning_crc_metaphlan_all_features2%20copy.jpg)
+
+Now, before you can proceed, you need a complete ranking file in order to plot Figure3.
+I order to obtain a complete ranking file you need you need to perform 3 steps:
+
+* duplicate one of the dataset of yoru analysis and change its name (or use another one): it is necessary to have a differently named dataset with a least one sample (metaphlan2 + metadata). Suppose to call it FAKE_DATASET
+** run :
+
+```
+python ../cmdpy_dataset.py FengQ_2015 ZellerG_2014 CM_rescignocrc YuJ_2015 CM_lilt VogtmannE_2016 HanniganGD_2017 FAKE_DATASET -of dataset_for_global_ranking.csv
+python ../metaml/classification_thomas-manghi.py dataset_for_global_ranking.csv dataset_for_global_ranking -d 1:study_condition:CRC -t dataset_name:FAKE_DATASET -l rf -nt 500 -nsl 5 -c entropy -nc 10
+```
+
+The above command substantially add a fake-dataset to the meta-cohort, and then perform a feature selection ML algorithm on the meta-cohort adopting the fake-dataset as a test. In this way, the featre-ranking of the overall meta-cohort is obtained.
+Now, before proceeding to the analysis, do:
+
+```
+vi feat_heat.py 
+```
+You should see the following lines:
+```
+BASE_PATH='/CM/data/meta/'
+COMPLETE_RANKING_PATH='../ml/resultofcrossvalidation_ANYonANY_features:metaphlan_experimenttype:study_condition:CRC:control_rf_grid0:%s_grid1:%s_grid2:%s_FEATURE_RANKING.txt'
+
+
+class feature_heatmap(object):
+
+    dataselect = '/python ../../cmdpy/cmdpy_dataset.py'
+
+```
+please, change BASE_PYTHON from "/CM/data/meta/" to "/YOUR/SERVER/BASE-ARCHITECTURE/", then
+change "COMPLETE_RANKING_PATH" to "YOUR_COMPLETE_RANKING_FILE_NAME" (your ranking file name is the one just obtained, in the previous case you be named "global_ranking.txt").
+then
+```
+press ESC, then type:
+:wq
+```
 
 * Figure 3 panel a:
 ** This analysis consist in a feature-ranking of 7 cross-validation
